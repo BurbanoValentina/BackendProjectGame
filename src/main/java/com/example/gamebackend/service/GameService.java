@@ -1,15 +1,13 @@
 package com.example.gamebackend.service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-
 import com.example.gamebackend.model.Game;
-import com.example.gamebackend.patterns.GameBuilder;
 import com.example.gamebackend.patterns.GameFactory;
 import com.example.gamebackend.repository.GameRepository;
+import org.springframework.stereotype.Service;
 
 @Service
 public class GameService {
@@ -21,7 +19,9 @@ public class GameService {
     }
 
     public List<Game> getAllGames() {
-        return gameRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+        List<Game> games = gameRepository.findAll();
+        games.sort(Comparator.comparing(Game::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
+        return games;
     }
 
     public Game getGameById(Integer id) {
@@ -30,15 +30,12 @@ public class GameService {
     }
 
     public Game createGameSession(String playerName, String difficulty) {
-        Game prototype = GameFactory.createGame(playerName, difficulty);
-        GameBuilder builder = new GameBuilder()
-            .setName(prototype.getPlayerName())
-            .setGenre(prototype.getDifficulty())
-            .setScore(prototype.getScore())
-            .setCorrectAnswers(prototype.getCorrectAnswers())
-            .setTotalQuestions(prototype.getTotalQuestions())
-            .setDurationSeconds(prototype.getDurationSeconds());
-        Game builtGame = Objects.requireNonNull(builder.build(), "El builder no puede producir un juego nulo");
+        String safePlayerName = Objects.requireNonNull(playerName, "El nombre del jugador es obligatorio");
+        String safeDifficulty = Objects.requireNonNull(difficulty, "La dificultad es obligatoria");
+        Game builtGame = Objects.requireNonNull(
+            GameFactory.createGame(safePlayerName, safeDifficulty),
+            "La fábrica no puede producir un juego nulo"
+        );
         return gameRepository.save(builtGame);
     }
 
