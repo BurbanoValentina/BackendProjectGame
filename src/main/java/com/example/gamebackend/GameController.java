@@ -2,8 +2,6 @@ package com.example.gamebackend;
 
 import java.util.List;
 
-import jakarta.validation.Valid;
-
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,9 +16,11 @@ import com.example.gamebackend.dto.GameUpdateRequest;
 import com.example.gamebackend.model.Game;
 import com.example.gamebackend.patterns.GameFacade;
 
+import jakarta.validation.Valid;
+
 @RestController
 @RequestMapping("/games")
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:5174", "http://localhost:5175"})
+@CrossOrigin(origins = "${frontend.cors.origins}")
 public class GameController {
 
     private final GameFacade gameFacade;
