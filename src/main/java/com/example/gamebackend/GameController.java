@@ -57,3 +57,4 @@ public class GameController {
             game.getTotalQuestions(), game.getDurationSeconds());
     }
 }
+
