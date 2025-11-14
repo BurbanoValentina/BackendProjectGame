@@ -2,16 +2,25 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy pom.xml and download dependencies
-COPY pom.xml .
-RUN mvn dependency:go-offline
+# Copy Maven wrapper and pom.xml
+COPY mvnw* ./
+COPY .mvn .mvn
+COPY pom.xml ./
 
-# Copy source code and build
+# Make mvnw executable
+RUN chmod +x mvnw
+
+# Download dependencies
+RUN ./mvnw dependency:go-offline -B
+
+# Copy source code
 COPY src ./src
-RUN mvn clean package -DskipTests
+
+# Build the application
+RUN ./mvnw clean package -DskipTests -B
 
 # Stage 2: Run
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 # Copy the built jar from build stage
@@ -21,4 +30,4 @@ COPY --from=build /app/target/game-backend-1.0-SNAPSHOT.jar app.jar
 EXPOSE 80
 
 # Run the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+CMD ["java", "-jar", "app.jar"]
