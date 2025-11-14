@@ -38,12 +38,15 @@ public class UserService {
             }
             
             // Usar Builder Pattern para crear y validar el usuario
-            UserBuilder builder = new UserBuilder();
-            User user = builder
+                UserBuilder builder = new UserBuilder();
+                // Validar primero con la contraseña en texto plano
+                User user = builder
                     .setUsername(request.getUsername())
-                    .setPassword(MD5Util.encrypt(request.getPassword())) // Encriptar con MD5
+                    .setPassword(request.getPassword())
                     .setNickname(request.getNickname())
                     .build();
+                // Encriptar la contraseña solo después de pasar las validaciones
+                user.setPassword(MD5Util.encrypt(user.getPassword()));
             
             // Guardar usuario
             User savedUser = userRepository.save(user);
