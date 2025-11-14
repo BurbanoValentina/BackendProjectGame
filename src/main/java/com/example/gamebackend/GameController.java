@@ -20,7 +20,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/games")
-@CrossOrigin(origins = "${frontend.cors.origins}")
+@CrossOrigin(origins = "${FRONTEND_URL}")
 public class GameController {
 
     private final GameFacade gameFacade;

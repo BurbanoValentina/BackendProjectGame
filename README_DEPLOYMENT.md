@@ -2,28 +2,45 @@
 
 ## Configuración para https://cloud.seenode.com
 
-⚠️ **IMPORTANTE**: SeeNode no tiene runtime de Java directo. Usa Docker.
+### Comandos de Despliegue
 
-### Opción 1: Despliegue con Docker (RECOMENDADO)
-
-**Runtime**: Cualquier opción con Docker support o déjalo vacío
-
-**Build Command**: (dejar vacío, Docker lo maneja)
-
-**Start Command**: (dejar vacío, Docker lo maneja)
-
-El `Dockerfile` ya está configurado y construirá y ejecutará automáticamente la aplicación en el puerto 80.
-
-### Opción 2: Si SeeNode requiere comandos explícitos
+**Runtime**: Node 22
 
 **Build Command**:
 ```bash
-docker build -t game-backend .
+apt-get update && apt-get install -y default-jdk maven && mvn clean package -DskipTests
 ```
 
 **Start Command**:
 ```bash
-docker run -p 80:80 game-backend
+apt-get update && apt-get install -y default-jre && java -jar target/game-backend-1.0-SNAPSHOT.jar
+```
+
+### Variables de Entorno en SeeNode
+
+Configura estas variables en el dashboard de SeeNode:
+
+```
+FRONTEND_URL=https://tu-app.vercel.app
+DATABASE_URL=jdbc:mysql://up-de-fra1-mysql-1.db.run-on-seenode.com:11550/db_1pyy7warrpf2
+DATABASE_USERNAME=db_1pyy7warrpf2
+DATABASE_PASSWORD=W2K2v4xTxm5M1g2zomF0OhHF
+PORT=80
+```
+
+**⚠️ IMPORTANTE**: Reemplaza `https://tu-app.vercel.app` con la URL real de tu frontend en Vercel.
+
+### Configuración del Frontend en Vercel
+
+En tu frontend (React/Vite), configura la variable de entorno:
+
+```
+VITE_API_URL=https://tu-backend.seenode.app
+```
+
+Usa esta variable en tu código:
+```typescript
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:80';
 ```
 
 ### Notas Importantes
