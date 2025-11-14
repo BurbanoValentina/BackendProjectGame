@@ -1,0 +1,5 @@
+runtime: docker
+
+entrypoint: ["java", "-jar", "app.jar"]
+
+port: 8080
