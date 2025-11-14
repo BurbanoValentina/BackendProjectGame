@@ -784,11 +784,3 @@ GET /actuator/info        - Información del build
 **Última actualización:** 14 de noviembre de 2025  
 **Versión:** 1.0.0
 
----
-
-## 📞 Soporte y Contacto
-
-Para preguntas sobre la implementación, issues o contribuciones:
-- 🐛 Issues: GitHub Issues
-- 📧 Email: [contacto del proyecto]
-- 📖 Wiki: [Documentación adicional]
