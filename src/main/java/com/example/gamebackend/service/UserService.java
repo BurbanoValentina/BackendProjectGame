@@ -97,6 +97,9 @@ public class UserService {
      * Actualiza el high score de un usuario
      */
     public boolean updateHighScore(Long userId, Integer newScore) {
+        if (userId == null || newScore == null) {
+            return false;
+        }
         Optional<User> userOptional = userRepository.findById(userId);
         if (userOptional.isPresent()) {
             User user = userOptional.get();
