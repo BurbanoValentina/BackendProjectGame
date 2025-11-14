@@ -26,8 +26,8 @@ WORKDIR /app
 # Copy the built jar from build stage
 COPY --from=build /app/target/game-backend-1.0-SNAPSHOT.jar app.jar
 
-# Expose port 80
-EXPOSE 80
+# Expose app port (por defecto 8080)
+EXPOSE 8080
 
 # Run the application
 CMD ["java", "-jar", "app.jar"]
