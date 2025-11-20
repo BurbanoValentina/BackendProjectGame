@@ -1,4 +1,4 @@
-package com.example.gamebackend;
+package com.example.gamebackend.controller;
 
 import java.util.List;
 
