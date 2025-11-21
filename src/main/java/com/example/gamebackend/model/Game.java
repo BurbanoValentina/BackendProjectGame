@@ -2,52 +2,38 @@ package com.example.gamebackend.model;
 
 import java.time.LocalDateTime;
 
-import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
-@Entity
-@Table(name = "games")
+@Document(collection = "games")
 public class Game {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(length = 36, nullable = false, updatable = false)
     private String id;
 
     @NotBlank(message = "Player name is required")
-    @Column(name = "player_name", nullable = false)
     private String playerName;
 
     @NotBlank(message = "Difficulty is required")
-    @Column(name = "difficulty", nullable = false)
     private String difficulty;
 
     @Min(value = 0, message = "Score cannot be negative")
-    @Column(name = "score", nullable = false)
     private int score;
 
     @Min(value = 0, message = "Correct answers cannot be negative")
-    @Column(name = "correct_answers", nullable = false)
     private int correctAnswers;
 
     @Min(value = 0, message = "Total questions cannot be negative")
-    @Column(name = "total_questions", nullable = false)
     private int totalQuestions;
 
     @Min(value = 0, message = "Duration cannot be negative")
-    @Column(name = "duration_seconds", nullable = false)
     private long durationSeconds;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
+    @CreatedDate
     private LocalDateTime createdAt;
 
     public Game() {

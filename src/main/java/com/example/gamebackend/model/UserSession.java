@@ -2,47 +2,36 @@ package com.example.gamebackend.model;
 
 import java.time.LocalDateTime;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 /**
  * Session Record Pattern: persists every authentication session with timestamps.
  */
-@Entity
-@Table(name = "user_sessions", uniqueConstraints = {
-    @UniqueConstraint(name = "uk_session_token", columnNames = "session_token")
-})
+@Document(collection = "user_sessions")
 public class UserSession {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(length = 36, nullable = false, updatable = false)
     private String id;
 
-    @Column(name = "user_id", nullable = false, length = 36)
+    @Indexed
     private String userId;
 
-    @Column(name = "session_token", nullable = false, length = 64)
+    @Indexed(unique = true)
     private String sessionToken;
 
-    @Column(name = "active", nullable = false)
     private boolean active = true;
 
-    @Column(name = "created_at", nullable = false)
+    @CreatedDate
     private LocalDateTime createdAt;
 
-    @Column(name = "expires_at", nullable = false)
+    @Indexed
     private LocalDateTime expiresAt;
 
-    @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
-    @Column(name = "closed_reason")
     private String closedReason;
 
     public String getId() {

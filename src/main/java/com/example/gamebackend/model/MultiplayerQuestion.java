@@ -1,23 +1,15 @@
 package com.example.gamebackend.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
-
 /**
  * MultiplayerQuestion models the Value Object pattern inside multiplayer rooms.
  */
-@Embeddable
 public class MultiplayerQuestion {
-    @Column(name = "question_number")
     private int id;
 
-    @Column(name = "question_prompt", nullable = false)
     private String prompt;
 
-    @Column(name = "question_answer", nullable = false)
     private int answer;
 
-    @Column(name = "question_created_at")
     private long createdAt;
 
     public MultiplayerQuestion(int id, String prompt, int answer) {

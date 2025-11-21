@@ -7,7 +7,6 @@ import java.util.Random;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.example.gamebackend.model.MultiplayerPlayer;
 import com.example.gamebackend.model.MultiplayerQuestion;
@@ -18,7 +17,7 @@ import com.example.gamebackend.repository.MultiplayerRoomRepository;
  * MultiplayerRoomService implements several patterns:
  * - Singleton via Spring's @Service lifecycle.
  * - Factory Method to create rooms and math questions.
- * - Repository Pattern via Spring Data JPA repositories persisted in SQLite.
+ * - Repository Pattern via Spring Data MongoDB repositories persisted in MongoDB.
  */
 @Service
 public class MultiplayerRoomService {
@@ -36,7 +35,6 @@ public class MultiplayerRoomService {
      * Factory Method: creates a new room with a unique code.
      * WARNING: Only one active room is allowed at a time.
      */
-    @Transactional
     public MultiplayerRoom createRoom(String hostPlayerId, String hostUsername) {
         List<MultiplayerRoom> activeRooms = roomRepository.findAll().stream()
                 .filter(r -> r.getStatus() != MultiplayerRoom.RoomStatus.FINISHED)
@@ -65,7 +63,6 @@ public class MultiplayerRoomService {
     /**
      * Allows a human player to join an existing room.
      */
-    @Transactional
     public MultiplayerRoom joinRoom(String roomCode, String playerId, String username) {
         String normalizedCode = normalizeRoomCode(roomCode);
         MultiplayerRoom room = roomRepository.findById(Objects.requireNonNull(normalizedCode))
@@ -89,7 +86,6 @@ public class MultiplayerRoomService {
      * Starts the multiplayer match for the provided room code.
      * Only the host (admin) can start the game.
      */
-    @Transactional
     public MultiplayerRoom startGame(String roomCode, String playerId) {
         String normalizedCode = normalizeRoomCode(roomCode);
         MultiplayerRoom room = roomRepository.findById(Objects.requireNonNull(normalizedCode))
@@ -114,7 +110,6 @@ public class MultiplayerRoomService {
     /**
      * Processes a player answer and advances the question flow.
      */
-    @Transactional
     public MultiplayerRoom submitAnswer(String roomCode, String playerId, int answer, long responseTime) {
         String normalizedCode = normalizeRoomCode(roomCode);
         MultiplayerRoom room = roomRepository.findById(Objects.requireNonNull(normalizedCode))
@@ -196,7 +191,6 @@ public class MultiplayerRoomService {
     /**
      * Builds the ranking for a room.
      */
-    @Transactional(readOnly = true)
     public List<MultiplayerPlayer> getRanking(String roomCode) {
         String normalizedCode = normalizeRoomCode(roomCode);
         MultiplayerRoom room = roomRepository.findById(Objects.requireNonNull(normalizedCode))
@@ -216,7 +210,6 @@ public class MultiplayerRoomService {
     /**
      * Looks up a room by its code.
      */
-    @Transactional(readOnly = true)
     public MultiplayerRoom getRoom(String roomCode) {
         if (roomCode == null || roomCode.isBlank()) {
             return null;
@@ -228,7 +221,6 @@ public class MultiplayerRoomService {
     /**
      * Removes a player from the referenced room.
      */
-    @Transactional
     public void leaveRoom(String roomCode, String playerId) {
         String normalizedCode = normalizeRoomCode(roomCode);
         MultiplayerRoom room = roomRepository.findById(Objects.requireNonNull(normalizedCode)).orElse(null);
@@ -306,7 +298,6 @@ public class MultiplayerRoomService {
     /**
      * Exposes all rooms (useful for diagnostics).
      */
-    @Transactional(readOnly = true)
     public List<MultiplayerRoom> getAllRooms() {
         List<MultiplayerRoom> rooms = new ArrayList<>(roomRepository.findAll());
         rooms.forEach(this::hydrateRoom);

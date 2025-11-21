@@ -2,52 +2,34 @@ package com.example.gamebackend.model;
 
 import java.util.UUID;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.springframework.data.annotation.Transient;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * MultiplayerPlayer represents the Entity/Model and exposes a Builder Pattern for bots.
  */
-@Entity
-@Table(name = "multiplayer_players")
 public class MultiplayerPlayer {
-    @Id
-    @Column(length = 64)
     private String id;
 
-    @Column(name = "username", nullable = false)
     private String username;
 
-    @Column(name = "score", nullable = false)
     private int score;
 
-    @Column(name = "answered_count", nullable = false)
     private int answeredCount;
 
-    @Column(name = "total_response_time", nullable = false)
     private long totalResponseTime; // stored in milliseconds
 
-    @Column(name = "is_bot", nullable = false)
     private boolean isBot;
 
-    @Column(name = "is_ready", nullable = false)
     private boolean isReady;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_code")
+    @Transient
     @JsonIgnore
     private MultiplayerRoom room;
 
     public MultiplayerPlayer(String id, String username) {
-        this.id = id;
+        this.id = id == null || id.isBlank() ? UUID.randomUUID().toString() : id;
         this.username = username;
         this.score = 0;
         this.answeredCount = 0;
@@ -62,11 +44,10 @@ public class MultiplayerPlayer {
     }
 
     public MultiplayerPlayer() {
-        // JPA constructor
+        this.id = UUID.randomUUID().toString();
     }
 
-    @PrePersist
-    protected void ensureId() {
+    public void ensureId() {
         if (this.id == null || this.id.isBlank()) {
             this.id = UUID.randomUUID().toString();
         }

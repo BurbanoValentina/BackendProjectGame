@@ -1,3 +1,8 @@
 package com.example.gamebackend.config;
 
-// Legacy placeholder left intentionally blank. Auditing config now lives in JpaAuditingConfig.
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class MongoConfig {
+	// Reserved for future Mongo customizations (e.g., converters, templates).
+}
