@@ -30,12 +30,12 @@ public class MultiplayerRoom {
     private String roomCode;
 
     @OneToMany(mappedBy = "room", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<MultiplayerPlayer> players = new ArrayList<>();
+    private final List<MultiplayerPlayer> players = new ArrayList<>();
 
     @ElementCollection
     @CollectionTable(name = "multiplayer_room_questions", joinColumns = @JoinColumn(name = "room_code"))
     @OrderColumn(name = "question_order")
-    private List<MultiplayerQuestion> questions = new ArrayList<>();
+    private final List<MultiplayerQuestion> questions = new ArrayList<>();
 
     @Column(name = "current_question_index", nullable = false)
     private int currentQuestionIndex;
@@ -63,7 +63,7 @@ public class MultiplayerRoom {
     }
 
     public MultiplayerRoom(String roomCode, String hostPlayerId) {
-        setRoomCode(roomCode);
+        this.roomCode = roomCode;
         this.hostPlayerId = hostPlayerId;
         this.currentQuestionIndex = 0;
         this.status = RoomStatus.WAITING;

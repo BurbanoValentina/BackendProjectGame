@@ -74,11 +74,14 @@ public class MultiplayerController {
     }
 
     /**
-     * Starts the game for the referenced room.
+     * Starts the game for the referenced room (only host can start).
      */
     @PostMapping("/rooms/{roomCode}/start")
-    public ResponseEntity<Map<String, Object>> startGame(@PathVariable String roomCode) {
-        MultiplayerRoom room = roomService.startGame(roomCode);
+    public ResponseEntity<Map<String, Object>> startGame(
+            @PathVariable String roomCode,
+            @RequestBody Map<String, String> requestBody) {
+        String playerId = requestBody.get("playerId");
+        MultiplayerRoom room = roomService.startGame(roomCode, playerId);
         
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);

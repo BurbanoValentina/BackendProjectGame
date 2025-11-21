@@ -1,14 +1,12 @@
 package com.example.gamebackend.model;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -129,13 +127,6 @@ public class Game {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
-    }
-
-    @PrePersist
-    private void ensureId() {
-        if (id == null || id.isBlank()) {
-            id = UUID.randomUUID().toString();
-        }
     }
 
     /**

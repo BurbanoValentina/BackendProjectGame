@@ -34,18 +34,26 @@ public class MultiplayerRoomService {
 
     /**
      * Factory Method: creates a new room with a unique code.
+     * WARNING: Only one active room is allowed at a time.
      */
     @Transactional
     public MultiplayerRoom createRoom(String hostPlayerId, String hostUsername) {
+        List<MultiplayerRoom> activeRooms = roomRepository.findAll().stream()
+                .filter(r -> r.getStatus() != MultiplayerRoom.RoomStatus.FINISHED)
+                .toList();
+        
+        if (!activeRooms.isEmpty()) {
+            MultiplayerRoom existingRoom = activeRooms.get(0);
+            throw new IllegalStateException("Only one active room is allowed. Join room: " + existingRoom.getRoomCode());
+        }
+        
         String roomCode = generateRoomCode();
         
         MultiplayerRoom room = new MultiplayerRoom(roomCode, hostPlayerId);
         
-        // Add the host as the first human player
         MultiplayerPlayer host = new MultiplayerPlayer(hostPlayerId, hostUsername);
         room.addPlayer(host);
         
-        // Add the bot automatically
         MultiplayerPlayer bot = new MultiplayerPlayer.Builder("bot-" + roomCode, "ChatBot")
                 .bot(true)
                 .build();
@@ -79,18 +87,22 @@ public class MultiplayerRoomService {
 
     /**
      * Starts the multiplayer match for the provided room code.
+     * Only the host (admin) can start the game.
      */
     @Transactional
-    public MultiplayerRoom startGame(String roomCode) {
+    public MultiplayerRoom startGame(String roomCode, String playerId) {
         String normalizedCode = normalizeRoomCode(roomCode);
         MultiplayerRoom room = roomRepository.findById(Objects.requireNonNull(normalizedCode))
                 .orElseThrow(() -> new IllegalArgumentException("Room not found"));
+        
+        if (!room.getHostPlayerId().equals(playerId)) {
+            throw new IllegalStateException("Only the host can start the game");
+        }
         
         if (!room.canStart()) {
             throw new IllegalStateException("The game cannot be started yet");
         }
         
-        // Factory Method: generate the math questions used in the match
         List<MultiplayerQuestion> questions = generateQuestions(TOTAL_QUESTIONS);
         room.setQuestions(questions);
         room.setStatus(MultiplayerRoom.RoomStatus.PLAYING);
