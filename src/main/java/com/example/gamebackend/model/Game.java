@@ -1,47 +1,52 @@
 package com.example.gamebackend.model;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
+import org.hibernate.annotations.CreationTimestamp;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
-@Document(collection = "games")
+@Entity
+@Table(name = "games")
 public class Game {
 
     @Id
+    @Column(length = 36)
     private String id;
 
     @NotBlank(message = "Player name is required")
-    @Field("player_name")
+    @Column(name = "player_name", nullable = false)
     private String playerName;
 
     @NotBlank(message = "Difficulty is required")
-    @Field("difficulty")
+    @Column(name = "difficulty", nullable = false)
     private String difficulty;
 
     @Min(value = 0, message = "Score cannot be negative")
-    @Field("score")
+    @Column(name = "score", nullable = false)
     private int score;
 
     @Min(value = 0, message = "Correct answers cannot be negative")
-    @Field("correct_answers")
+    @Column(name = "correct_answers", nullable = false)
     private int correctAnswers;
 
     @Min(value = 0, message = "Total questions cannot be negative")
-    @Field("total_questions")
+    @Column(name = "total_questions", nullable = false)
     private int totalQuestions;
 
     @Min(value = 0, message = "Duration cannot be negative")
-    @Field("duration_seconds")
+    @Column(name = "duration_seconds", nullable = false)
     private long durationSeconds;
 
-    @CreatedDate
-    @Field(value = "created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     public Game() {
@@ -124,6 +129,13 @@ public class Game {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    @PrePersist
+    private void ensureId() {
+        if (id == null || id.isBlank()) {
+            id = UUID.randomUUID().toString();
+        }
     }
 
     /**

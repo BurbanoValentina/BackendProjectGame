@@ -1,3 +1,42 @@
+## 🧱 Arquitectura actual (SQLite + Spring Boot)
+
+### Capas principales
+- **Controllers:** `AuthController`, `GameController` y `MultiplayerController` exponen los endpoints REST y validan DTOs (`GameStartRequest`, `JoinRoomRequest`, etc.).
+- **Patrones / Facade:** `GameFacade` concentra los casos de uso del modo individual y oculta la complejidad de `GameService`; los demás patrones viven en `src/main/java/com/example/gamebackend/patterns`.
+- **Services:** `GameService`, `UserService`, `UserSessionService` y `MultiplayerRoomService` contienen la lógica de negocio, validaciones cruzadas y transacciones.
+- **Repositories:** `GameRepository`, `UserRepository`, `UserSessionRepository`, `MultiplayerRoomRepository` y `MultiplayerPlayerRepository` usan `JpaRepository` para hablar con SQLite.
+- **Configuración:** `application.properties` define `jdbc:sqlite:game.db`, `spring.jpa.*` y `JpaAuditingConfig` habilita anotaciones como `@CreationTimestamp`/`@PrePersist`.
+
+```
+Frontend → Controller → (Facade) → Service → Repository → SQLite (JPA Entities)
+```
+
+### Persistencia y entidades clave
+- **Game:** almacena cada sesión individual (puntaje, preguntas, duración) y sirve para el leaderboard.
+- **User / UserSession:** gestionan el login, recuperación de contraseña y sesiones activas con tokens persistentes (`UserSessionService` limpia expirados).
+- **MultiplayerRoom / MultiplayerPlayer / MultiplayerQuestion:** representan partidas multijugador, participantes (humanos + bots) y el set de preguntas embebidas. `MultiplayerRoomService` usa transacciones para crear salas, registrar respuestas y cerrar partidas manteniendo historial en SQLite.
+- **Auditoría:** todas las entidades usan IDs UUID o asignados manualmente y columnas de trazabilidad (`created_at`, `started_at`, `finished_at`).
+
+### Flujos destacados
+1. **Autenticación y sesiones** – `AuthController` → `UserService` crea usuarios y delega en `UserRepository`; `UserSessionService` guarda tokens activos en SQLite mediante `UserSessionRepository` para permitir logout y expiración real.
+2. **Modo individual** – `GameController` → `GameFacade` → `GameService`. Se generan partidas (`GameFactory`), se calculan resultados con estrategias y se persisten en `GameRepository`.
+3. **Modo multijugador/chatbot** – `MultiplayerController` → `MultiplayerRoomService`. El servicio fabrica salas, inyecta el bot usando el `Builder` de `MultiplayerPlayer`, genera preguntas matemáticas y persiste todo el flujo (jugadores, respuestas, ranking) en `MultiplayerRoomRepository`/`MultiplayerPlayerRepository`.
+4. **Reportes/leaderboard** – Los servicios consultan las entidades anteriores y construyen DTO/colecciones (listas, colas) para el frontend sin tocar directamente la base de datos.
+
+### Patrones activos en la implementación
+- **Facade (`GameFacade`)** simplifica a los controllers.
+- **Builder (`MultiplayerPlayer.Builder`, `GameSessionBuilder`)** construye objetos complejos (bots, sesiones).
+- **Factory (`QuestionFactory`, `GameFactory`)** crea preguntas y partidas según dificultad/mode.
+- **Strategy (`ScoreStrategy` y variantes)** calcula puntajes dependiendo de la dificultad.
+- **Singletons utilitarios** para configuraciones compartidas (`DatabaseConnection`, `ConfigurationManager`).
+
+### Motivaciones del uso de SQLite
+- **Despliegue rápido**: no requiere servidor externo; basta con el archivo `game.db`/`game-dev.db`.
+- **Consistencia de datos**: resultados, sesiones y partidas multijugador sobreviven reinicios del backend.
+- **Compatibilidad Spring Data**: gracias a `sqlite-jdbc` + `hibernate-community-dialects` no se reescribieron los repositorios; bastó con migrar a `JpaRepository` y ajustar entidades.
+
+> 📝 Cuando corras perfiles locales (`spring.profiles.active=dev`), el datasource apunta a `game-dev.db`, permitiendo aislar datos de pruebas.
+
 ## 🏗️ Patrones de Diseño Implementados
 
 ### 1. Singleton Pattern 🔐

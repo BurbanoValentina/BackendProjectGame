@@ -1,16 +1,50 @@
 package com.example.gamebackend.model;
 
+import java.util.UUID;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+
 /**
  * MultiplayerPlayer represents the Entity/Model and exposes a Builder Pattern for bots.
  */
+@Entity
+@Table(name = "multiplayer_players")
 public class MultiplayerPlayer {
+    @Id
+    @Column(length = 64)
     private String id;
+
+    @Column(name = "username", nullable = false)
     private String username;
+
+    @Column(name = "score", nullable = false)
     private int score;
+
+    @Column(name = "answered_count", nullable = false)
     private int answeredCount;
+
+    @Column(name = "total_response_time", nullable = false)
     private long totalResponseTime; // stored in milliseconds
+
+    @Column(name = "is_bot", nullable = false)
     private boolean isBot;
+
+    @Column(name = "is_ready", nullable = false)
     private boolean isReady;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "room_code")
+    @JsonIgnore
+    private MultiplayerRoom room;
 
     public MultiplayerPlayer(String id, String username) {
         this.id = id;
@@ -25,6 +59,17 @@ public class MultiplayerPlayer {
     public MultiplayerPlayer(String id, String username, boolean isBot) {
         this(id, username);
         this.isBot = isBot;
+    }
+
+    public MultiplayerPlayer() {
+        // JPA constructor
+    }
+
+    @PrePersist
+    protected void ensureId() {
+        if (this.id == null || this.id.isBlank()) {
+            this.id = UUID.randomUUID().toString();
+        }
     }
 
     // Getters and setters
@@ -101,6 +146,14 @@ public class MultiplayerPlayer {
         isReady = ready;
     }
 
+    public MultiplayerRoom getRoom() {
+        return room;
+    }
+
+    public void setRoom(MultiplayerRoom room) {
+        this.room = room;
+    }
+
     /**
      * Builder Pattern to simplify bot creation.
      */
@@ -108,6 +161,7 @@ public class MultiplayerPlayer {
         private final String id;
         private final String username;
         private boolean isBot = false;
+        private MultiplayerRoom room;
 
         public Builder(String id, String username) {
             this.id = id;
@@ -119,8 +173,15 @@ public class MultiplayerPlayer {
             return this;
         }
 
+        public Builder setRoom(MultiplayerRoom room) {
+            this.room = room;
+            return this;
+        }
+
         public MultiplayerPlayer build() {
-            return new MultiplayerPlayer(id, username, isBot);
+            MultiplayerPlayer player = new MultiplayerPlayer(id, username, isBot);
+            player.setRoom(this.room);
+            return player;
         }
     }
 }

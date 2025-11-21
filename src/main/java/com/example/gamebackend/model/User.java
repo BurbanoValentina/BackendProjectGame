@@ -1,35 +1,42 @@
 package com.example.gamebackend.model;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
+import org.hibernate.annotations.CreationTimestamp;
 
-@Document(collection = "users")
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
+@Entity
+@Table(name = "users", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_users_username", columnNames = "username"),
+    @UniqueConstraint(name = "uk_users_nickname", columnNames = "nickname")
+})
 public class User {
     
     @Id
+    @Column(length = 36)
     private String id;
     
-    @Indexed(unique = true)
-    @Field("username")
+    @Column(name = "username", nullable = false, length = 50)
     private String username;
     
-    @Field("password")
+    @Column(name = "password_hash", nullable = false, length = 64)
     private String password; // MD5 encrypted
     
-    @Indexed(unique = true)
-    @Field("nickname")
+    @Column(name = "nickname", nullable = false, length = 50)
     private String nickname;
     
-    @CreatedDate
-    @Field("created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
     
-    @Field("high_score")
+    @Column(name = "high_score")
     private Integer highScore = 0;
     
     // Constructors
@@ -88,5 +95,12 @@ public class User {
     
     public void setHighScore(Integer highScore) {
         this.highScore = highScore;
+    }
+
+    @PrePersist
+    private void ensureId() {
+        if (id == null || id.isBlank()) {
+            id = UUID.randomUUID().toString();
+        }
     }
 }

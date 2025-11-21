@@ -4,18 +4,56 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderColumn;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+
 /**
  * MultiplayerRoom implements the Entity/Model pattern for multiplayer matches.
  */
+@Entity
+@Table(name = "multiplayer_rooms")
 public class MultiplayerRoom {
+    @Id
+    @Column(name = "room_code", length = 16)
     private String roomCode;
-    private List<MultiplayerPlayer> players;
-    private List<MultiplayerQuestion> questions;
+
+    @OneToMany(mappedBy = "room", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MultiplayerPlayer> players = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "multiplayer_room_questions", joinColumns = @JoinColumn(name = "room_code"))
+    @OrderColumn(name = "question_order")
+    private List<MultiplayerQuestion> questions = new ArrayList<>();
+
+    @Column(name = "current_question_index", nullable = false)
     private int currentQuestionIndex;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
     private RoomStatus status;
+
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "started_at")
     private LocalDateTime startedAt;
+
+    @Column(name = "finished_at")
     private LocalDateTime finishedAt;
+
+    @Column(name = "host_player_id", nullable = false)
     private String hostPlayerId;
 
     public enum RoomStatus {
@@ -25,13 +63,25 @@ public class MultiplayerRoom {
     }
 
     public MultiplayerRoom(String roomCode, String hostPlayerId) {
-        this.roomCode = roomCode;
+        setRoomCode(roomCode);
         this.hostPlayerId = hostPlayerId;
-        this.players = new ArrayList<>();
-        this.questions = new ArrayList<>();
         this.currentQuestionIndex = 0;
         this.status = RoomStatus.WAITING;
         this.createdAt = LocalDateTime.now();
+    }
+
+    public MultiplayerRoom() {
+        // JPA constructor
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.status == null) {
+            this.status = RoomStatus.WAITING;
+        }
     }
 
     // Getters and setters
@@ -40,7 +90,7 @@ public class MultiplayerRoom {
     }
 
     public void setRoomCode(String roomCode) {
-        this.roomCode = roomCode;
+        this.roomCode = roomCode == null ? null : roomCode.toUpperCase();
     }
 
     public List<MultiplayerPlayer> getPlayers() {
@@ -48,15 +98,39 @@ public class MultiplayerRoom {
     }
 
     public void setPlayers(List<MultiplayerPlayer> players) {
-        this.players = players;
+        this.players.clear();
+        if (players == null) {
+            return;
+        }
+        for (MultiplayerPlayer player : players) {
+            if (player != null) {
+                addPlayer(player);
+            }
+        }
     }
 
     public void addPlayer(MultiplayerPlayer player) {
+        if (player == null) {
+            return;
+        }
+        player.setRoom(this);
         this.players.add(player);
     }
 
     public void removePlayer(String playerId) {
-        this.players.removeIf(p -> p.getId().equals(playerId));
+        if (playerId == null) {
+            return;
+        }
+        this.players.removeIf(p -> {
+            if (p == null) {
+                return false;
+            }
+            boolean matches = p.getId().equals(playerId);
+            if (matches) {
+                p.setRoom(null);
+            }
+            return matches;
+        });
     }
 
     public List<MultiplayerQuestion> getQuestions() {
@@ -64,7 +138,14 @@ public class MultiplayerRoom {
     }
 
     public void setQuestions(List<MultiplayerQuestion> questions) {
-        this.questions = questions;
+        this.questions.clear();
+        if (questions != null) {
+            for (MultiplayerQuestion question : questions) {
+                if (question != null) {
+                    this.questions.add(question);
+                }
+            }
+        }
     }
 
     public int getCurrentQuestionIndex() {

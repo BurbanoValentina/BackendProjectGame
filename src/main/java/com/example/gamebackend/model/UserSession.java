@@ -1,36 +1,47 @@
 package com.example.gamebackend.model;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 /**
  * Session Record Pattern: persists every authentication session with timestamps.
  */
-@Document(collection = "user_sessions")
+@Entity
+@Table(name = "user_sessions", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_session_token", columnNames = "session_token")
+})
 public class UserSession {
 
     @Id
+    @Column(length = 36)
     private String id;
 
-    @Indexed
+    @Column(name = "user_id", nullable = false, length = 36)
     private String userId;
 
-    @Indexed(unique = true)
+    @Column(name = "session_token", nullable = false, length = 64)
     private String sessionToken;
 
+    @Column(name = "active", nullable = false)
     private boolean active = true;
 
-    @Indexed
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @Indexed
+    @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
+    @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
+    @Column(name = "closed_reason")
     private String closedReason;
 
     public String getId() {
@@ -95,5 +106,15 @@ public class UserSession {
 
     public void setClosedReason(String closedReason) {
         this.closedReason = closedReason;
+    }
+
+    @PrePersist
+    private void ensureDefaults() {
+        if (id == null || id.isBlank()) {
+            id = UUID.randomUUID().toString();
+        }
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
     }
 }

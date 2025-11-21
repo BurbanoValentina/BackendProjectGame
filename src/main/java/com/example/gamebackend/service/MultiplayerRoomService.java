@@ -2,34 +2,40 @@ package com.example.gamebackend.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.gamebackend.model.MultiplayerPlayer;
 import com.example.gamebackend.model.MultiplayerQuestion;
 import com.example.gamebackend.model.MultiplayerRoom;
+import com.example.gamebackend.repository.MultiplayerRoomRepository;
 
 /**
  * MultiplayerRoomService implements several patterns:
  * - Singleton via Spring's @Service lifecycle.
  * - Factory Method to create rooms and math questions.
- * - Repository Pattern by storing rooms inside an in-memory ConcurrentHashMap.
+ * - Repository Pattern via Spring Data JPA repositories persisted in SQLite.
  */
 @Service
 public class MultiplayerRoomService {
 
-    // Repository Pattern: in-memory storage for active rooms
-    private final ConcurrentHashMap<String, MultiplayerRoom> rooms = new ConcurrentHashMap<>();
+    private final MultiplayerRoomRepository roomRepository;
     private final Random random = new Random();
     private static final int TOTAL_QUESTIONS = 5;
     private static final int POINTS_PER_CORRECT = 10;
 
+    public MultiplayerRoomService(MultiplayerRoomRepository roomRepository) {
+        this.roomRepository = roomRepository;
+    }
+
     /**
      * Factory Method: creates a new room with a unique code.
      */
+    @Transactional
     public MultiplayerRoom createRoom(String hostPlayerId, String hostUsername) {
         String roomCode = generateRoomCode();
         
@@ -45,20 +51,17 @@ public class MultiplayerRoomService {
                 .build();
         room.addPlayer(bot);
         
-        rooms.put(roomCode, room);
-        
-        return room;
+        return hydrateRoom(roomRepository.save(room));
     }
 
     /**
      * Allows a human player to join an existing room.
      */
+    @Transactional
     public MultiplayerRoom joinRoom(String roomCode, String playerId, String username) {
-        MultiplayerRoom room = rooms.get(roomCode.toUpperCase());
-        
-        if (room == null) {
-            throw new IllegalArgumentException("Room not found");
-        }
+        String normalizedCode = normalizeRoomCode(roomCode);
+        MultiplayerRoom room = roomRepository.findById(Objects.requireNonNull(normalizedCode))
+                .orElseThrow(() -> new IllegalArgumentException("Room not found"));
         
         if (room.getStatus() != MultiplayerRoom.RoomStatus.WAITING) {
             throw new IllegalStateException("The room is already playing");
@@ -71,18 +74,17 @@ public class MultiplayerRoomService {
         MultiplayerPlayer player = new MultiplayerPlayer(playerId, username);
         room.addPlayer(player);
         
-        return room;
+        return hydrateRoom(roomRepository.save(room));
     }
 
     /**
      * Starts the multiplayer match for the provided room code.
      */
+    @Transactional
     public MultiplayerRoom startGame(String roomCode) {
-        MultiplayerRoom room = rooms.get(roomCode.toUpperCase());
-        
-        if (room == null) {
-            throw new IllegalArgumentException("Room not found");
-        }
+        String normalizedCode = normalizeRoomCode(roomCode);
+        MultiplayerRoom room = roomRepository.findById(Objects.requireNonNull(normalizedCode))
+                .orElseThrow(() -> new IllegalArgumentException("Room not found"));
         
         if (!room.canStart()) {
             throw new IllegalStateException("The game cannot be started yet");
@@ -94,18 +96,17 @@ public class MultiplayerRoomService {
         room.setStatus(MultiplayerRoom.RoomStatus.PLAYING);
         room.setStartedAt(java.time.LocalDateTime.now());
         
-        return room;
+        return hydrateRoom(roomRepository.save(room));
     }
 
     /**
      * Processes a player answer and advances the question flow.
      */
+    @Transactional
     public MultiplayerRoom submitAnswer(String roomCode, String playerId, int answer, long responseTime) {
-        MultiplayerRoom room = rooms.get(roomCode.toUpperCase());
-        
-        if (room == null) {
-            throw new IllegalArgumentException("Room not found");
-        }
+        String normalizedCode = normalizeRoomCode(roomCode);
+        MultiplayerRoom room = roomRepository.findById(Objects.requireNonNull(normalizedCode))
+                .orElseThrow(() -> new IllegalArgumentException("Room not found"));
         
         MultiplayerQuestion currentQuestion = room.getCurrentQuestion();
         if (currentQuestion == null) {
@@ -149,7 +150,7 @@ public class MultiplayerRoomService {
             }
         }
         
-        return room;
+        return hydrateRoom(roomRepository.save(room));
     }
 
     /**
@@ -183,12 +184,11 @@ public class MultiplayerRoomService {
     /**
      * Builds the ranking for a room.
      */
+    @Transactional(readOnly = true)
     public List<MultiplayerPlayer> getRanking(String roomCode) {
-        MultiplayerRoom room = rooms.get(roomCode.toUpperCase());
-        
-        if (room == null) {
-            throw new IllegalArgumentException("Room not found");
-        }
+        String normalizedCode = normalizeRoomCode(roomCode);
+        MultiplayerRoom room = roomRepository.findById(Objects.requireNonNull(normalizedCode))
+                .orElseThrow(() -> new IllegalArgumentException("Room not found"));
         
         // Sort by: score (desc) and average response time (asc)
         return room.getPlayers().stream()
@@ -204,26 +204,36 @@ public class MultiplayerRoomService {
     /**
      * Looks up a room by its code.
      */
+    @Transactional(readOnly = true)
     public MultiplayerRoom getRoom(String roomCode) {
-        return rooms.get(roomCode.toUpperCase());
+        if (roomCode == null || roomCode.isBlank()) {
+            return null;
+        }
+        String normalizedCode = normalizeRoomCode(roomCode);
+        return hydrateRoom(roomRepository.findById(Objects.requireNonNull(normalizedCode)).orElse(null));
     }
 
     /**
      * Removes a player from the referenced room.
      */
+    @Transactional
     public void leaveRoom(String roomCode, String playerId) {
-        MultiplayerRoom room = rooms.get(roomCode.toUpperCase());
+        String normalizedCode = normalizeRoomCode(roomCode);
+        MultiplayerRoom room = roomRepository.findById(Objects.requireNonNull(normalizedCode)).orElse(null);
         
-        if (room != null) {
-            room.removePlayer(playerId);
-            
-            // Remove the room if no human players remain
-            boolean hasHumanPlayers = room.getPlayers().stream()
-                    .anyMatch(p -> !p.isBot());
-            
-            if (!hasHumanPlayers) {
-                rooms.remove(roomCode.toUpperCase());
-            }
+        if (room == null) {
+            return;
+        }
+
+        room.removePlayer(playerId);
+
+        boolean hasHumanPlayers = room.getPlayers().stream()
+                .anyMatch(p -> !p.isBot());
+
+        if (!hasHumanPlayers) {
+            roomRepository.delete(room);
+        } else {
+            roomRepository.save(room);
         }
     }
 
@@ -233,15 +243,17 @@ public class MultiplayerRoomService {
     private String generateRoomCode() {
         String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         StringBuilder code = new StringBuilder();
+        String candidate;
         
         do {
             code.setLength(0);
             for (int i = 0; i < 6; i++) {
                 code.append(characters.charAt(random.nextInt(characters.length())));
             }
-        } while (rooms.containsKey(code.toString()));
+            candidate = code.toString();
+        } while (roomRepository.existsById(Objects.requireNonNull(candidate)));
         
-        return code.toString();
+        return candidate;
     }
 
     /**
@@ -282,7 +294,25 @@ public class MultiplayerRoomService {
     /**
      * Exposes all rooms (useful for diagnostics).
      */
+    @Transactional(readOnly = true)
     public List<MultiplayerRoom> getAllRooms() {
-        return new ArrayList<>(rooms.values());
+        List<MultiplayerRoom> rooms = new ArrayList<>(roomRepository.findAll());
+        rooms.forEach(this::hydrateRoom);
+        return rooms;
+    }
+
+    private String normalizeRoomCode(String roomCode) {
+        if (roomCode == null || roomCode.isBlank()) {
+            throw new IllegalArgumentException("Room code is required");
+        }
+        return roomCode.toUpperCase();
+    }
+
+    private MultiplayerRoom hydrateRoom(MultiplayerRoom room) {
+        if (room != null) {
+            room.getPlayers().size();
+            room.getQuestions().size();
+        }
+        return room;
     }
 }
