@@ -2,49 +2,46 @@ package com.example.gamebackend.model;
 
 import java.time.LocalDateTime;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
-@Entity
-@Table(name = "game_results")
+@Document(collection = "games")
 public class Game {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private String id;
 
     @NotBlank(message = "El nombre del jugador es obligatorio")
-    @Column(name = "player_name", nullable = false)
+    @Field("player_name")
     private String playerName;
 
     @NotBlank(message = "La dificultad es obligatoria")
-    @Column(name = "difficulty", nullable = false)
+    @Field("difficulty")
     private String difficulty;
 
     @Min(value = 0, message = "El puntaje no puede ser negativo")
-    @Column(name = "score")
+    @Field("score")
     private int score;
 
     @Min(value = 0, message = "Los aciertos no pueden ser negativos")
-    @Column(name = "correct_answers")
+    @Field("correct_answers")
     private int correctAnswers;
 
     @Min(value = 0, message = "Las preguntas totales no pueden ser negativas")
-    @Column(name = "total_questions")
+    @Field("total_questions")
     private int totalQuestions;
 
     @Min(value = 0, message = "La duración no puede ser negativa")
-    @Column(name = "duration_seconds")
+    @Field("duration_seconds")
     private long durationSeconds;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @CreatedDate
+    @Field(value = "created_at")
     private LocalDateTime createdAt;
 
     public Game() {
@@ -60,16 +57,16 @@ public class Game {
         this.durationSeconds = durationSeconds;
     }
 
-    public Game(Integer id, String playerName, String difficulty) {
+    public Game(String id, String playerName, String difficulty) {
         this(playerName, difficulty, 0, 0, 0, 0);
         this.id = id;
     }
 
-    public Integer getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Integer id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -148,10 +145,4 @@ public class Game {
         this.difficulty = genre;
     }
 
-    @PrePersist
-    public void prePersist() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
-    }
 }

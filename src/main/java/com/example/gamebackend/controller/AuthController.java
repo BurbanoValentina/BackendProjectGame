@@ -1,11 +1,21 @@
 package com.example.gamebackend.controller;
 
-import com.example.gamebackend.dto.*;
-import com.example.gamebackend.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.example.gamebackend.dto.AuthResponse;
+import com.example.gamebackend.dto.LoginRequest;
+import com.example.gamebackend.dto.RegisterRequest;
+import com.example.gamebackend.service.UserService;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -46,9 +56,9 @@ public class AuthController {
     /**
      * Endpoint para actualizar el high score
      */
-    @PutMapping("/user/{userId}/highscore")
-    public ResponseEntity<String> updateHighScore(
-            @PathVariable Long userId,
+        @PutMapping("/user/{userId}/highscore")
+        public ResponseEntity<String> updateHighScore(
+            @PathVariable String userId,
             @RequestParam Integer score) {
         boolean updated = userService.updateHighScore(userId, score);
         

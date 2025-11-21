@@ -1,7 +1,7 @@
 package com.example.gamebackend.dto;
 
 public class UserDTO {
-    private Long id;
+    private String id;
     private String username;
     private String nickname;
     private Integer highScore;
@@ -9,7 +9,7 @@ public class UserDTO {
     // Constructors
     public UserDTO() {}
     
-    public UserDTO(Long id, String username, String nickname, Integer highScore) {
+    public UserDTO(String id, String username, String nickname, Integer highScore) {
         this.id = id;
         this.username = username;
         this.nickname = nickname;
@@ -17,11 +17,11 @@ public class UserDTO {
     }
     
     // Getters and Setters
-    public Long getId() {
+    public String getId() {
         return id;
     }
     
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
     

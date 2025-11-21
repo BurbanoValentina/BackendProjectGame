@@ -1,7 +1,8 @@
 package com.example.gamebackend.repository;
 
-import com.example.gamebackend.model.Game;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-public interface GameRepository extends JpaRepository<Game, Integer> {
+import com.example.gamebackend.model.Game;
+
+public interface GameRepository extends MongoRepository<Game, String> {
 }

@@ -3,7 +3,7 @@ package com.example.gamebackend.patterns;
 import com.example.gamebackend.model.Game;
 
 public class GameBuilder {
-    private Integer id;
+    private String id;
     private String playerName;
     private String difficulty;
     private int score;
@@ -11,7 +11,7 @@ public class GameBuilder {
     private int totalQuestions;
     private long durationSeconds;
 
-    public GameBuilder setId(Integer id) {
+    public GameBuilder setId(String id) {
         this.id = id;
         return this;
     }

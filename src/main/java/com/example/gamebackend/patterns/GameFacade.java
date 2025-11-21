@@ -20,7 +20,7 @@ public class GameFacade {
         return gameService.createGameSession(playerName, difficulty);
     }
 
-    public Game updateGameSession(Integer id, int score, int correctAnswers, int totalQuestions, long durationSeconds) {
+    public Game updateGameSession(String id, int score, int correctAnswers, int totalQuestions, long durationSeconds) {
         return gameService.updateGameProgress(id, score, correctAnswers, totalQuestions, durationSeconds);
     }
 
@@ -28,7 +28,7 @@ public class GameFacade {
         return gameService.getAllGames();
     }
 
-    public Game findGame(Integer id) {
+    public Game findGame(String id) {
         return gameService.getGameById(id);
     }
 }

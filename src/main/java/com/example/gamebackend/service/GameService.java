@@ -4,10 +4,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
+import org.springframework.stereotype.Service;
+
 import com.example.gamebackend.model.Game;
 import com.example.gamebackend.patterns.GameFactory;
 import com.example.gamebackend.repository.GameRepository;
-import org.springframework.stereotype.Service;
 
 @Service
 public class GameService {
@@ -24,8 +25,8 @@ public class GameService {
         return games;
     }
 
-    public Game getGameById(Integer id) {
-        Integer safeId = Objects.requireNonNull(id, "El id no puede ser nulo");
+    public Game getGameById(String id) {
+        String safeId = Objects.requireNonNull(id, "El id no puede ser nulo");
         return gameRepository.findById(safeId).orElse(null);
     }
 
@@ -44,8 +45,8 @@ public class GameService {
         return gameRepository.save(safeGame);
     }
 
-    public Game updateGameProgress(Integer id, int score, int correctAnswers, int totalQuestions, long durationSeconds) {
-        Integer safeId = Objects.requireNonNull(id, "El id no puede ser nulo");
+    public Game updateGameProgress(String id, int score, int correctAnswers, int totalQuestions, long durationSeconds) {
+        String safeId = Objects.requireNonNull(id, "El id no puede ser nulo");
         Game existing = gameRepository.findById(safeId)
             .orElseThrow(() -> new IllegalArgumentException("La partida con id " + id + " no existe."));
         existing.setScore(score);

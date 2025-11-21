@@ -35,7 +35,7 @@ public class GameController {
     }
 
     @GetMapping("/{id}")
-    public Game getGameById(@PathVariable Integer id) {
+    public Game getGameById(@PathVariable String id) {
         return gameFacade.findGame(id);
     }
 
@@ -45,7 +45,7 @@ public class GameController {
     }
 
     @PutMapping("/{id}")
-    public Game updateGame(@PathVariable Integer id, @Valid @RequestBody GameUpdateRequest request) {
+    public Game updateGame(@PathVariable String id, @Valid @RequestBody GameUpdateRequest request) {
         return gameFacade.updateGameSession(id, request.getScore(), request.getCorrectAnswers(),
             request.getTotalQuestions(), request.getDurationSeconds());
     }

@@ -2,41 +2,35 @@ package com.example.gamebackend.model;
 
 import java.time.LocalDateTime;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "users")
+@Document(collection = "users")
 public class User {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
     
-    @Column(unique = true, nullable = false, length = 15)
+    @Indexed(unique = true)
+    @Field("username")
     private String username;
     
-    @Column(nullable = false)
+    @Field("password")
     private String password; // MD5 encrypted
     
-    @Column(unique = true, nullable = false, length = 15)
+    @Indexed(unique = true)
+    @Field("nickname")
     private String nickname;
     
-    @Column(nullable = false)
+    @CreatedDate
+    @Field("created_at")
     private LocalDateTime createdAt;
     
-    private Integer highScore;
-    
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        highScore = 0;
-    }
+    @Field("high_score")
+    private Integer highScore = 0;
     
     // Constructors
     public User() {}
@@ -48,11 +42,11 @@ public class User {
     }
     
     // Getters and Setters
-    public Long getId() {
+    public String getId() {
         return id;
     }
     
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
     

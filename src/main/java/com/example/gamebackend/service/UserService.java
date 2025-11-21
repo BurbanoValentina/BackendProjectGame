@@ -96,14 +96,16 @@ public class UserService {
     /**
      * Actualiza el high score de un usuario
      */
-    public boolean updateHighScore(Long userId, Integer newScore) {
+    public boolean updateHighScore(String userId, Integer newScore) {
         if (userId == null || newScore == null) {
             return false;
         }
         Optional<User> userOptional = userRepository.findById(userId);
         if (userOptional.isPresent()) {
             User user = userOptional.get();
-            if (newScore > user.getHighScore()) {
+            Integer storedHighScore = user.getHighScore();
+            int currentHighScore = storedHighScore != null ? storedHighScore.intValue() : 0;
+            if (newScore > currentHighScore) {
                 user.setHighScore(newScore);
                 userRepository.save(user);
                 return true;
