@@ -30,8 +30,8 @@ public class AppProperties {
     }
     
     public static class Frontend {
-        private String url = "http://localhost:5173";
-        private List<String> allowedOrigins = new ArrayList<>(List.of("http://localhost:5173"));
+        private String url = "https://frotendproject.vercel.app/";
+        private List<String> allowedOrigins = new ArrayList<>(List.of("https://frotendproject.vercel.app/"));
         
         public String getUrl() {
             return url;
@@ -43,13 +43,20 @@ public class AppProperties {
 
         public List<String> getAllowedOrigins() {
             if (allowedOrigins == null || allowedOrigins.isEmpty()) {
-                return List.of(url);
+                return List.of(url != null ? url : "https://frotendproject.vercel.app/");
             }
             return allowedOrigins;
         }
 
         public void setAllowedOrigins(List<String> allowedOrigins) {
-            this.allowedOrigins = allowedOrigins;
+            if (allowedOrigins == null) {
+                this.allowedOrigins = List.of(url != null ? url : "https://frotendproject.vercel.app/");
+                return;
+            }
+            this.allowedOrigins = allowedOrigins.stream()
+                .filter(origin -> origin != null && !origin.isBlank())
+                .map(String::trim)
+                .toList();
         }
     }
 
