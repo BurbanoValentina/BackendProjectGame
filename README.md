@@ -1,637 +1,229 @@
-## 🧱 Arquitectura actual (SQLite + Spring Boot)
+# Game Challenge Platform (Backend + Frontend)
 
-### Capas principales
-- **Controllers:** `AuthController`, `GameController` y `MultiplayerController` exponen los endpoints REST y validan DTOs (`GameStartRequest`, `JoinRoomRequest`, etc.).
-- **Patrones / Facade:** `GameFacade` concentra los casos de uso del modo individual y oculta la complejidad de `GameService`; los demás patrones viven en `src/main/java/com/example/gamebackend/patterns`.
-- **Services:** `GameService`, `UserService`, `UserSessionService` y `MultiplayerRoomService` contienen la lógica de negocio, validaciones cruzadas y transacciones.
-- **Repositories:** `GameRepository`, `UserRepository`, `UserSessionRepository`, `MultiplayerRoomRepository` y `MultiplayerPlayerRepository` usan `JpaRepository` para hablar con SQLite.
-- **Configuración:** `application.properties` define `jdbc:sqlite:game.db`, `spring.jpa.*` y `JpaAuditingConfig` habilita anotaciones como `@CreationTimestamp`/`@PrePersist`.
+Documentación completa de los dos proyectos que conviven en este repositorio: un backend Spring Boot que orquesta sesiones individuales y multijugador, y un frontend React + TypeScript que exhibe estructuras de datos personalizadas, chat asistido por IA y deep links.
 
+## 🧭 Resumen rápido
+- Arquitectura en capas: Controllers → Patterns (facade/factory/builder) → Services → Repositories → MongoDB.
+- Gestión real de sesiones: tokens persistidos en `user_sessions`, limpieza automática cada 15 min.
+- Modo multijugador coordinado por IA: una única sala activa, preguntas matemáticas generadas al vuelo y bots con builder específico.
+- Frontend educativo: todas las pantallas usan estructuras de datos implementadas a mano (Queue, Stack, Linked Lists, Circular Doubly Linked List, Graph, Tree, Map managers, etc.).
+- Dev experience unificada: Maven Wrapper + Dockerfile para backend; Vite + TypeScript para frontend.
+- Migrador propio (`migration/SqliteToMongoMigrator`) para llevar históricos desde el viejo SQLite hacia MongoDB.
+
+## 📂 Estructura del repositorio
 ```
-Frontend → Controller → (Facade) → Service → Repository → SQLite (JPA Entities)
-```
-
-### Persistencia y entidades clave
-- **Game:** almacena cada sesión individual (puntaje, preguntas, duración) y sirve para el leaderboard.
-- **User / UserSession:** gestionan el login, recuperación de contraseña y sesiones activas con tokens persistentes (`UserSessionService` limpia expirados).
-- **MultiplayerRoom / MultiplayerPlayer / MultiplayerQuestion:** representan partidas multijugador, participantes (humanos + bots) y el set de preguntas embebidas. `MultiplayerRoomService` usa transacciones para crear salas, registrar respuestas y cerrar partidas manteniendo historial en SQLite.
-- **Auditoría:** todas las entidades usan IDs UUID o asignados manualmente y columnas de trazabilidad (`created_at`, `started_at`, `finished_at`).
-
-### Flujos destacados
-1. **Autenticación y sesiones** – `AuthController` → `UserService` crea usuarios y delega en `UserRepository`; `UserSessionService` guarda tokens activos en SQLite mediante `UserSessionRepository` para permitir logout y expiración real.
-2. **Modo individual** – `GameController` → `GameFacade` → `GameService`. Se generan partidas (`GameFactory`), se calculan resultados con estrategias y se persisten en `GameRepository`.
-3. **Modo multijugador/chatbot** – `MultiplayerController` → `MultiplayerRoomService`. El servicio fabrica salas, inyecta el bot usando el `Builder` de `MultiplayerPlayer`, genera preguntas matemáticas y persiste todo el flujo (jugadores, respuestas, ranking) en `MultiplayerRoomRepository`/`MultiplayerPlayerRepository`.
-4. **Reportes/leaderboard** – Los servicios consultan las entidades anteriores y construyen DTO/colecciones (listas, colas) para el frontend sin tocar directamente la base de datos.
-
-### Patrones activos en la implementación
-- **Facade (`GameFacade`)** simplifica a los controllers.
-- **Builder (`MultiplayerPlayer.Builder`, `GameSessionBuilder`)** construye objetos complejos (bots, sesiones).
-- **Factory (`QuestionFactory`, `GameFactory`)** crea preguntas y partidas según dificultad/mode.
-- **Strategy (`ScoreStrategy` y variantes)** calcula puntajes dependiendo de la dificultad.
-- **Singletons utilitarios** para configuraciones compartidas (`DatabaseConnection`, `ConfigurationManager`).
-
-### Motivaciones del uso de SQLite
-- **Despliegue rápido**: no requiere servidor externo; basta con el archivo `game.db`/`game-dev.db`.
-- **Consistencia de datos**: resultados, sesiones y partidas multijugador sobreviven reinicios del backend.
-- **Compatibilidad Spring Data**: gracias a `sqlite-jdbc` + `hibernate-community-dialects` no se reescribieron los repositorios; bastó con migrar a `JpaRepository` y ajustar entidades.
-
-> 📝 Cuando corras perfiles locales (`spring.profiles.active=dev`), el datasource apunta a `game-dev.db`, permitiendo aislar datos de pruebas.
-
-## 🏗️ Patrones de Diseño Implementados
-
-### 1. Singleton Pattern 🔐
-
-**Archivo:** `src/patterns/Singleton.java`
-
-**Uso:** Instancia única de configuración y conexiones
-
-**Componentes que lo usan:**
-- `DatabaseConnection` - Conexión única a la base de datos
-- `ConfigurationManager` - Gestión centralizada de configuración
-- `CacheManager` - Instancia única de caché
-
-**Implementación:**
-```java
-public class DatabaseConnection {
-    private static DatabaseConnection instance;
-    
-    private DatabaseConnection() {}
-    
-    public static synchronized DatabaseConnection getInstance() {
-        if (instance == null) {
-            instance = new DatabaseConnection();
-        }
-        return instance;
-    }
-}
+GameProject/
+├─ game_backend_project/
+│  ├─ src/main/java/com/example/gamebackend/
+│  │  ├─ controller/ (AuthController, GameController, MultiplayerController)
+│  │  ├─ service/ (UserService, UserSessionService, GameService, MultiplayerRoomService)
+│  │  ├─ patterns/ (GameFacade, AbstractGameFactory, GameBuilder, PrototypeGame, SingletonDatabaseConnection, UserBuilder)
+│  │  ├─ model/ (Game, User, UserSession, MultiplayerRoom, MultiplayerPlayer, MultiplayerQuestion)
+│  │  ├─ repository/ (MongoRepository interfaces)
+│  │  ├─ config/ (AppProperties, MongoAuditingConfig, MongoConfig)
+│  │  └─ migration/ (SqliteToMongoMigrator, SqliteToMongoMigrationApp)
+│  ├─ src/main/resources/application.properties (prod / Atlas)
+│  ├─ src/main/resources/application-dev.properties (perfil local)
+│  ├─ Dockerfile, pom.xml, mvnw, mvnw.cmd
+│  └─ target/ (artefactos generados)
+└─ my-game-app-with-structures1/
+   ├─ src/App.tsx, main.tsx
+   ├─ src/components/ (WelcomeScreen, Login, Register, ForgotPassword, GameModeSelection,
+   │  GameScreen, MultiplayerScreen, CountdownOverlay, GameSummaryCard, Timer, ChatbotBubble, etc.)
+   ├─ src/services/ (AuthService, MultiplayerService, AITournamentService)
+   ├─ src/lib/ (Queue, Stack, LinkedList, DoublyLinkedList, CircularDoublyLinkedList,
+   │  LayoutManager, PanelStateManager, Graph, Tree, ArrayStructure, UserDataStructures…)
+   ├─ src/styles/*.css
+   └─ package.json, tsconfig*.json, vite.config.*
 ```
 
-**Ventajas:**
-- ✅ Control de instancia única
-- ✅ Acceso global controlado
-- ✅ Inicialización lazy (bajo demanda)
-- ✅ Thread-safe con synchronized
+## 🛠️ Stack principal
+| Capa | Tecnologías |
+|------|-------------|
+| Backend | Java 17, Spring Boot 3.5, Spring Data MongoDB, Spring Validation, Spring Scheduler, Maven Wrapper, Docker |
+| Persistencia | MongoDB Atlas/local (auditoría `@CreatedDate`, índices `@Indexed`) |
+| Frontend | React 18.3, TypeScript 5.4, Vite 5, Framer Motion 11, canvas-confetti, CSS modular |
+| Herramientas | Git, npm, Docker (backend), VS Code, netlify/host estático opcional |
 
 ---
 
-### 2. Factory Pattern 🏭
-
-**Archivo:** `src/patterns/Factory.java`
-
-**Uso:** Creación de diferentes tipos de preguntas
-
-**Componentes:**
-- `QuestionFactory` - Fábrica de preguntas
-- `DifficultyFactory` - Configuración según dificultad
-- `ResponseFactory` - Generación de respuestas estandarizadas
-
-**Implementación:**
-```java
-public class QuestionFactory {
-    public static Question createQuestion(String type, String difficulty) {
-        switch (type) {
-            case "MULTIPLE_CHOICE":
-                return new MultipleChoiceQuestion(difficulty);
-            case "TRUE_FALSE":
-                return new TrueFalseQuestion(difficulty);
-            case "OPEN_ENDED":
-                return new OpenEndedQuestion(difficulty);
-            default:
-                throw new IllegalArgumentException("Unknown question type");
-        }
-    }
-}
-```
-
-**Ventajas:**
-- ✅ Encapsulación de creación de objetos
-- ✅ Fácil extensión con nuevos tipos
-- ✅ Código limpio y mantenible
-- ✅ Principio Open/Closed
-
----
-
-### 3. Observer Pattern 👀
-
-**Archivo:** `src/patterns/Observer.java`
-
-**Uso:** Notificaciones de eventos del juego
-
-**Componentes:**
-- `GameEventPublisher` - Publica eventos
-- `ScoreUpdateListener` - Observa cambios de puntaje
-- `AchievementListener` - Detecta logros desbloqueados
-- `LeaderboardListener` - Actualiza ranking
-
-**Implementación:**
-```java
-public interface GameEventListener {
-    void onEvent(GameEvent event);
-}
-
-public class GameEventPublisher {
-    private List<GameEventListener> listeners = new ArrayList<>();
-    
-    public void subscribe(GameEventListener listener) {
-        listeners.add(listener);
-    }
-    
-    public void notifyListeners(GameEvent event) {
-        listeners.forEach(l -> l.onEvent(event));
-    }
-}
-```
-
-**Eventos soportados:**
-- 📊 Actualización de puntaje
-- 🏆 Logro desbloqueado
-- ⏱️ Tiempo agotado
-- ✅ Respuesta correcta/incorrecta
-- 🎮 Fin de partida
-
----
-
-### 4. Strategy Pattern 🎯
-
-**Archivo:** `src/patterns/Strategy.java`
-
-**Uso:** Algoritmos de cálculo de puntaje según dificultad
-
-**Componentes:**
-- `ScoreStrategy` (interfaz) - Estrategia de puntuación
-- `EasyScoreStrategy` - Puntuación para nivel fácil
-- `MediumScoreStrategy` - Puntuación para nivel medio
-- `HardScoreStrategy` - Puntuación para nivel difícil
-
-**Implementación:**
-```java
-public interface ScoreStrategy {
-    int calculateScore(boolean correct, long timeSpent);
-}
-
-public class HardScoreStrategy implements ScoreStrategy {
-    @Override
-    public int calculateScore(boolean correct, long timeSpent) {
-        if (!correct) return 0;
-        int baseScore = 100;
-        int timeBonus = Math.max(0, 50 - (int)(timeSpent / 1000));
-        return baseScore + timeBonus;
-    }
-}
-```
-
-**Ventajas:**
-- ✅ Fácil cambio de algoritmo en runtime
-- ✅ Código desacoplado y testeable
-- ✅ Cumple principio Open/Closed
-- ✅ Extensible para nuevas dificultades
-
----
-
-### 5. Builder Pattern 🔨
-
-**Archivo:** `src/patterns/Builder.java`
-
-**Uso:** Construcción de objetos complejos paso a paso
-
-**Componentes:**
-- `GameSessionBuilder` - Constructor de sesiones
-- `QuestionBuilder` - Constructor de preguntas
-- `UserBuilder` - Constructor de usuarios
-
-**Implementación:**
-```java
-public class GameSessionBuilder {
-    private String username;
-    private String difficulty;
-    private int totalQuestions;
-    private LocalDateTime startTime;
-    
-    public GameSessionBuilder username(String username) {
-        this.username = username;
-        return this;
-    }
-    
-    public GameSessionBuilder difficulty(String difficulty) {
-        this.difficulty = difficulty;
-        return this;
-    }
-    
-    public GameSession build() {
-        return new GameSession(username, difficulty, totalQuestions, startTime);
-    }
-}
-
-// Uso
-GameSession session = new GameSessionBuilder()
-    .username("player1")
-    .difficulty("HARD")
-    .totalQuestions(10)
-    .build();
-```
-
-**Ventajas:**
-- ✅ Construcción fluida y legible
-- ✅ Validación paso a paso
-- ✅ Inmutabilidad de objetos
-- ✅ Parámetros opcionales claros
-
----
-
-## 🔄 Flujo de Datos en el Backend
-
-```
-┌─────────────────────────┐
-│   Cliente (Frontend)    │
-└───────────┬─────────────┘
-            │ HTTP Request
-            ▼
-┌─────────────────────────┐
-│   AuthController /      │
-│   GameController        │  ← REST Controllers
-└───────────┬─────────────┘
-            │
-            ▼
-┌─────────────────────────┐
-│   Service Layer         │  ← Lógica de negocio
-│  - AuthService          │
-│  - GameService          │
-│  - LeaderboardService   │
-└───────────┬─────────────┘
-            │
-            ├─────────────┬──────────────┬─────────────┐
-            ▼             ▼              ▼             ▼
-      ┌─────────┐   ┌─────────┐   ┌─────────┐   ┌─────────┐
-      │  Queue  │   │  Stack  │   │  Tree   │   │  Graph  │
-      │(Pregun.)│   │(Undo)   │   │(Ranking)│   │(Progr.) │
-      └─────────┘   └─────────┘   └─────────┘   └─────────┘
-            │             │              │             │
-            └─────────────┴──────────────┴─────────────┘
-                          │
-                          ▼
-            ┌─────────────────────────┐
-            │   Repository Layer      │  ← JPA Repositories
-            │  - UserRepository       │     (ArrayList)
-            │  - GameSessionRepo      │
-            │  - GameAttemptRepo      │
-            └───────────┬─────────────┘
-                        │
-                        ▼
-            ┌─────────────────────────┐
-            │   PostgreSQL Database   │  ← Persistencia
-            └─────────────────────────┘
-```
-
----
-
-## 📊 Complejidad de Operaciones
-
-| Estructura | Inserción | Búsqueda | Eliminación | Ordenar | Espacio |
-|------------|-----------|----------|-------------|---------|---------|
-| **ArrayList** | O(1)* | O(n) | O(n) | O(n log n) | O(n) |
-| **HashMap** | O(1) | O(1) | O(1) | N/A | O(n) |
-| **LinkedList** | O(1) | O(n) | O(1)** | N/A | O(n) |
-| **Stack** | O(1) | O(n) | O(1) | N/A | O(n) |
-| **Queue** | O(1) | O(n) | O(1) | N/A | O(n) |
-| **Tree (BST)** | O(log n) | O(log n) | O(log n) | O(n) | O(n) |
-| **Graph** | O(1) | O(V+E) | O(V+E) | O(V log V) | O(V+E) |
-
-*Amortizado al final del array  
-**Si se tiene referencia directa al nodo
-
----
-
-## 🗄️ Modelo de Base de Datos
-
-### Entidades Principales
-
-#### User (Usuario)
-```java
-@Entity
-@Table(name = "users")
-public class User {
-    @Id @GeneratedValue
-    private Long id;
-    
-    private String username;
-    private String password; // BCrypt hash
-    private String email;
-    
-    @OneToMany(mappedBy = "user")
-    private List<GameSession> sessions; // ArrayList
-    
-    @CreationTimestamp
-    private LocalDateTime createdAt;
-}
-```
-
-#### GameSession (Sesión de Juego)
-```java
-@Entity
-@Table(name = "game_sessions")
-public class GameSession {
-    @Id @GeneratedValue
-    private Long id;
-    
-    @ManyToOne
-    private User user;
-    
-    private String difficulty;
-    private int totalQuestions;
-    private int correctAnswers;
-    private int score;
-    private long durationSeconds;
-    
-    @OneToMany(mappedBy = "session")
-    private List<GameAttempt> attempts; // ArrayList
-    
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
-}
-```
-
-#### GameAttempt (Intento Individual)
-```java
-@Entity
-@Table(name = "game_attempts")
-public class GameAttempt {
-    @Id @GeneratedValue
-    private Long id;
-    
-    @ManyToOne
-    private GameSession session;
-    
-    private String question;
-    private String userAnswer;
-    private String correctAnswer;
-    private boolean correct;
-    private long timeSpent;
-    
-    @CreationTimestamp
-    private LocalDateTime timestamp;
-}
-```
-
----
-
-## 🛡️ Seguridad y Autenticación
-
-### JWT Token Management (HashMap)
-
-```java
-// Caché en memoria de tokens activos
-private Map<String, TokenData> activeTokens = new HashMap<>();
-
-public boolean validateToken(String token) {
-    if (activeTokens.containsKey(token)) {
-        TokenData data = activeTokens.get(token);
-        return !data.isExpired();
-    }
-    return false;
-}
-```
-
-### Estrategia de Seguridad
-- 🔐 **BCrypt** para hash de contraseñas
-- 🎫 **JWT** para autenticación stateless
-- ⏰ **Token expiration** (24 horas)
-- 🛡️ **Spring Security** para protección de endpoints
-- 🚫 **CORS** configurado para frontend específico
-
----
-
-## 🚀 Endpoints REST API
-
-### Autenticación
-```
-POST   /api/auth/register     - Registrar nuevo usuario
-POST   /api/auth/login        - Iniciar sesión (retorna JWT)
-POST   /api/auth/logout       - Cerrar sesión
-GET    /api/auth/validate     - Validar token JWT
-```
-
-### Juego
-```
-POST   /api/game/start        - Iniciar nueva partida
-POST   /api/game/answer       - Enviar respuesta
-GET    /api/game/question     - Obtener siguiente pregunta
-POST   /api/game/finish       - Finalizar partida
-GET    /api/game/session/:id  - Obtener detalles de sesión
-```
-
-### Leaderboard
-```
-GET    /api/leaderboard/top/:n      - Top N jugadores (Tree)
-GET    /api/leaderboard/user/:id    - Posición de usuario
-GET    /api/leaderboard/history/:id - Historial de partidas (LinkedList)
-```
-
-### Estadísticas
-```
-GET    /api/stats/user/:id    - Estadísticas del jugador
-GET    /api/stats/global      - Estadísticas globales
-```
-
----
-
-## 📦 Tecnologías y Dependencias
-
-### Core Framework
-- ☕ **Java 21** (LTS)
-- 🍃 **Spring Boot 3.2** 
-- 🗄️ **Spring Data JPA**
-- 🔒 **Spring Security 6**
-- 🌐 **Spring Web (REST)**
-
-### Base de Datos
-- 🐘 **PostgreSQL 15+**
-- 💾 **HikariCP** (Connection pooling)
-- 🔄 **Flyway** (Migraciones)
-
-### Seguridad
-- 🎫 **JWT (jjwt 0.12.3)**
-- 🔐 **BCrypt** (Spring Security)
-
-### Herramientas
-- 🔨 **Maven** (Gestión de dependencias)
-- 🐋 **Docker** (Containerización)
-- 📝 **Lombok** (Reducción de boilerplate)
-- ✅ **JUnit 5** (Testing)
-
----
-
-## 🧪 Testing
-
-### Cobertura de Tests
-```
-src/test/java/
-├── controller/
-│   ├── AuthControllerTest.java
-│   └── GameControllerTest.java
-├── service/
-│   ├── GameServiceTest.java
-│   └── LeaderboardServiceTest.java
-├── patterns/
-│   ├── FactoryPatternTest.java
-│   └── StrategyPatternTest.java
-└── lib/
-    ├── QueueTest.java
-    ├── StackTest.java
-    ├── TreeTest.java
-    └── GraphTest.java
-```
-
-### Comandos de Testing
+## 🧩 Backend · Spring Boot + MongoDB
+
+### Arquitectura
+- **Controllers** (`controller/`)
+  - `AuthController` (`/api/auth`): register/login/logout, cambio de contraseña y actualización de high score.
+  - `GameController` (`/api/games`): leaderboard, inicio de sesiones individuales y actualización de resultados a través de `GameFacade`.
+  - `MultiplayerController` (`/api/multiplayer`): CRUD de salas, inicio de partida, envío de respuestas, ranking, leave y listado de salas.
+- **Patrones** (`patterns/`)
+  - `GameFacade` simplifica la interacción con `GameService`.
+  - `AbstractGameFactory` decide la dificultad y `GameBuilder` garantiza objetos consistentes.
+  - `PrototypeGame` clona partidas para pruebas; `SingletonDatabaseConnection` mantiene conexión SQLite legada.
+  - `UserBuilder` valida longitud/regex antes de persistir credenciales.
+- **Servicios** (`service/`)
+  - `UserService` usa `UserBuilder` + `MD5Util`, verifica unicidad y convierte entidades a DTOs.
+  - `UserSessionService` genera tokens UUID, fija expiración 24 h y ejecuta `@Scheduled(fixedDelayString = app.session.cleanup-interval-ms)` para cerrar sesiones vencidas.
+  - `GameService` ordena partidas por `createdAt`, crea sesiones con `GameFactory` y actualiza métricas.
+  - `MultiplayerRoomService` restringe a una sala activa, genera room codes, añade bots (`MultiplayerPlayer.Builder`), fabrica preguntas matemáticas y calcula ranking por score y tiempo promedio.
+- **Persistencia** (`repository/`)
+  - `UserRepository`, `GameRepository`, `UserSessionRepository`, `MultiplayerRoomRepository` heredan de `MongoRepository`.
+  - Documentos anotados con `@Document` y campos `@Indexed` (username, nickname, sessionToken, expiresAt) para consultas eficientes.
+- **Configuración** (`config/`)
+  - `AppProperties` expone `app.frontend.url` (CORS) y `app.session.cleanup-interval-ms`.
+  - `MongoAuditingConfig` habilita `@CreatedDate`/`@LastModifiedDate`.
+  - `MongoConfig` listo para converters cuando se requieran.
+
+### Modelos principales
+- `Game`: nombre del jugador, dificultad, score, correctAnswers, totalQuestions, durationSeconds, `createdAt`.
+- `User`: username + nickname únicos, password MD5 (legado) y `highScore` opcional.
+- `UserSession`: `sessionToken`, `expiresAt`, flags `active`, `closedAt`, `closedReason`.
+- `MultiplayerRoom`: `roomCode`, lista de `MultiplayerPlayer`, preguntas (`MultiplayerQuestion`), `RoomStatus`, `startedAt`/`finishedAt`, host y límites.
+- `MultiplayerPlayer`: score, respuestas contestadas, tiempo promedio, flags `isBot`/`isReady`.
+- `MultiplayerQuestion`: prompt, respuesta y timestamp (VO).
+
+### API REST disponible
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Crea usuario, valida username/nickname y genera sesión persistida |
+| POST | `/api/auth/login` | Verifica password MD5, limpia sesiones expiradas y crea token nuevo |
+| POST | `/api/auth/logout?token=UUID` | Marca sesión como cerrada (motivo "Manual logout") |
+| PUT | `/api/auth/user/{userId}/highscore?score=n` | Actualiza récord si el nuevo puntaje es mayor |
+| PUT | `/api/auth/password/change` | Cambia contraseña buscando por username o nickname |
+| GET | `/api/games` | Leaderboard completo ordenado por fecha |
+| GET | `/api/games/{id}` | Recupera partida individual |
+| POST | `/api/games/start` | Fabrica partida nueva vía `GameFacade` |
+| PUT | `/api/games/{id}` | Actualiza score/correctAnswers/totalQuestions/duration |
+| POST | `/api/games` | Inserta partida manual (útil para seeds/demos) |
+| POST | `/api/multiplayer/rooms/create` | Crea sala (host + bot) y devuelve código |
+| POST | `/api/multiplayer/rooms/join` | Une jugador humano (máx. 5 en backend) |
+| POST | `/api/multiplayer/rooms/{roomCode}/start` | Solo host; genera 5 preguntas y marca estado PLAYING |
+| POST | `/api/multiplayer/rooms/answer` | Procesa respuesta, tiempos y avanza ronda |
+| GET | `/api/multiplayer/rooms/{roomCode}` | Snapshot completo de sala |
+| GET | `/api/multiplayer/rooms/{roomCode}/ranking` | Ranking ordenado por score/avg time |
+| POST | `/api/multiplayer/rooms/{roomCode}/leave/{playerId}` | Remueve jugador y elimina sala si no quedan humanos |
+| GET | `/api/multiplayer/rooms` | Helper para listar todas las salas guardadas |
+
+### Configuración y perfiles
+- **`application.properties` (deploy):** apunta a MongoDB Atlas (`spring.data.mongodb.uri`), habilita override por `FRONTEND_URL`, `SESSION_CLEANUP_INTERVAL_MS`, `PORT`.
+- **`application-dev.properties`:** usa `mongodb://localhost:27017`, DB `gameproject_dev`, CORS `http://localhost:5173`.
+- **Variables clave**
+  | Variable | Descripción | Default |
+  |----------|-------------|---------|
+  | `SPRING_PROFILES_ACTIVE` | Perfil (`dev` para local) | _(vacío)_ |
+  | `SPRING_DATA_MONGODB_URI` | Cadena de conexión | `mongodb+srv://…` (prod) |
+  | `SPRING_DATA_MONGODB_DATABASE` | Base de datos | `gamedb` / `gameproject_dev` |
+  | `FRONTEND_URL` | Origen permitido CORS | `http://localhost:5173` |
+  | `SESSION_CLEANUP_INTERVAL_MS` | Frecuencia del scheduler | `900000` (15 min) |
+  | `PORT` | Puerto HTTP | `8080` |
+
+### Migración SQLite → Mongo
+- `SqliteToMongoMigrator` copia todas las tablas a colecciones homónimas en lotes de 1 000 documentos.
+- `SqliteToMongoMigrationApp` lee system properties/env vars: `SQLITE_PATH`, `MONGO_URI`, `MONGO_DATABASE`, `MONGO_DROP_COLLECTIONS`.
+- Permite portar el archivo `game.db` legado sin scripts externos.
+
+### Cómo ejecutar el backend
 ```bash
-# Ejecutar todos los tests
-mvn test
+cd game_backend_project
 
-# Tests con cobertura
-mvn test jacoco:report
+# Desarrollo (Windows/Mac/Linux)
+./mvnw spring-boot:run --spring.profiles.active=dev
 
-# Tests de integración
-mvn verify
-```
+# Pruebas
+./mvnw test
 
----
+# Empaquetar JAR
+./mvnw clean package -DskipTests
 
-## 🔧 Configuración y Despliegue
-
-### Variables de Entorno
-```properties
-# Base de datos
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/gamedb
-SPRING_DATASOURCE_USERNAME=postgres
-SPRING_DATASOURCE_PASSWORD=your_password
-
-# JWT
-JWT_SECRET=your_secret_key_here
-JWT_EXPIRATION=86400000
-
-# Server
-SERVER_PORT=8080
-```
-
-### Docker Deployment
-```dockerfile
-FROM eclipse-temurin:21-jre-alpine
-WORKDIR /app
-COPY target/game-backend-1.0-SNAPSHOT.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
-```
-
-### Comandos de Ejecución
-```bash
-# Desarrollo
-mvn spring-boot:run
-
-# Producción
-mvn clean package
-java -jar target/game-backend-1.0-SNAPSHOT.jar
-
-# Docker
+# Docker (image + run)
 docker build -t game-backend .
-docker run -p 8080:8080 game-backend
+docker run -p 8080:8080 -e FRONTEND_URL=http://localhost:5173 game-backend
 ```
 
 ---
 
-## 📈 Métricas y Monitoreo
+## 🎮 Frontend · React + TypeScript + Vite
 
-### Actuator Endpoints
+### Flujo de pantallas (App.tsx)
+1. **WelcomeScreen:** CTA para iniciar sesión.
+2. **Login/Register/ForgotPassword:** Formularios conectados a `/api/auth` vía `AuthService`.
+3. **GameModeSelection:** Permite elegir "Chatbot" o "Multiplayer", mostrando el nickname actual.
+4. **GameScreen:** Juego individual cronometrado con countdown, bot que provoca, paneles colapsables y confetti.
+5. **MultiplayerScreen:** Lobby, auto-join por `?roomCode=XYZ`, chat asistido por IA (`AITournamentService`) y ranking en vivo.
+
+### Componentes clave
+- **UI reusable:** `Button`, `Card`, `Input`, `Icon`, `Timer`, `Background`, `CountdownOverlay`, `GameSummaryCard`, `ChatbotBubble`.
+- **Animaciones:** `framer-motion` para transiciones y overlays; `canvas-confetti` celebra resultados altos.
+- **Timers y audio:** `Timer` + `CountdownOverlay` sincronizan estado visual; `GameScreen` manipula `AudioContext` para tensión.
+
+### Servicios (`src/services/`)
+- `AuthService` (Singleton)
+  - Cachea usuarios con `UserHashMap`, registra historial con `SessionQueue`, maneja navegación con `NavigationStack`.
+  - Persiste sesión en `localStorage`, detecta expiración (`enforceSessionTtl`) y comunica logout al backend.
+- `MultiplayerService` (Singleton)
+  - Encapsula `fetch` para `/api/multiplayer`, maneja errores y colas de solicitudes (`Queue`).
+- `AITournamentService`
+  - Genera `AIRoomBlueprint` determinista por código, set de preguntas fáciles, links de invitación con `roomCode` y respuestas contextuales (`AIChatMessage`).
+
+### Estructuras de datos personalizadas
+| Estructura | Archivo | Uso |
+|------------|--------|-----|
+| `Queue<T>` | `lib/Queue.ts` | Buffer FIFO de preguntas en `GameScreen` y cola de requests en `MultiplayerService`. |
+| `Stack<T>` | `lib/Stack.ts` | Historial reciente de intentos mostrado en panel "📜 Intentos (Stack)". |
+| `LinkedList<T>` | `lib/LinkedList.ts` | Leaderboard/historial de partidas (convierte a array para UI). |
+| `DoublyLinkedList<T>` | `lib/DoublyLinkedList.ts` | Base para demos y debug de navegación bidireccional. |
+| `CircularDoublyLinkedList<T>` | `lib/CircularDoublyLinkedList.ts` | Rotación infinita de burlas del bot y mensajes motivacionales. |
+| `ArrayStructure<T>` | `lib/Array.ts` | Ejemplo de lista dinámica para paneles configurables. |
+| `LayoutManager` | `lib/LayoutManager.ts` | Controla orden, visibilidad y prioridad de paneles (game/stats/history/leaderboard). |
+| `PanelStateManager` | `lib/PanelStateManager.ts` | HashMap de estados (expandido/colapsado) con helpers `toggle`, `expandAll`, `collapseAll`. |
+| `Graph` | `lib/Graph.ts` | Representa relaciones entre pantallas, usado para depuración de flujos. |
+| `Tree<T>` | `lib/Tree.ts` | Inserta puntajes y permite recorridos `inOrder` para analizar rangos. |
+| `UserHashMap`, `SessionQueue`, `NavigationStack` | `lib/UserDataStructures.ts` | Cache y trazabilidad en `AuthService`. |
+
+### GameScreen (componentes & lógica)
+- Dificultades (`basic`, `advanced`, `expert`) controlan cronómetro (`DIFFICULTY_TIME`) y velocidad del bot.
+- Pre-carga 8 preguntas con `Queue` para minimizar latencia.
+- `historyStack` almacena intentos (LIFO) y se proyecta al panel horizontal.
+- `tauntListRef` (Circular Doubly Linked List) rota frases del bot sin reiniciar la lista.
+- `LayoutManager` + `PanelStateManager` permiten reordenar/ocultar paneles sin perder estado.
+- Guarda resultados en backend (`/api/games`) y actualiza high score (`/api/auth/user/.../highscore`).
+
+### MultiplayerScreen (componentes & lógica)
+- Estados `menu`, `join`, `lobby`, `game`, `results`.
+- Auto-join cuando la URL contiene `roomCode`; `App.tsx` detecta query params y deriva a la vista correspondiente.
+- Chat asistente: `AITournamentService.getAssistantReply` responde sobre pistas, tiempo restante o comparte link directo.
+- Timers independientes: `questionTimeLeft` y `roundTimeLeft`.
+- Ranking ordenado por score y tiempo promedio, feedback instantáneo por respuesta y copia de link mediante `navigator.clipboard`.
+
+### Variables y comandos
+| Variable | Descripción | Valor por defecto |
+|----------|-------------|-------------------|
+| `VITE_API_URL` | Base URL del backend | `https://localhost:8080` (cámbialo a `http://localhost:8080` en local) |
+
+```bash
+cd my-game-app-with-structures1
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # Genera dist/
+npm run preview  # Sirve dist/ localmente
 ```
-GET /actuator/health      - Estado de salud
-GET /actuator/metrics     - Métricas de aplicación
-GET /actuator/info        - Información del build
-```
-
-### Logs
-```java
-// Configuración de logging (logback-spring.xml)
-- INFO: Operaciones normales
-- WARN: Situaciones inusuales
-- ERROR: Errores y excepciones
-- DEBUG: Debugging detallado (solo desarrollo)
-```
 
 ---
 
-## 🚀 Extensiones Futuras
-
-### Estructuras Adicionales Planificadas
-- 🔄 **Circular Queue** - Rotación de preguntas
-- 📊 **Priority Queue** - Priorización de solicitudes
-- 🎲 **Bloom Filter** - Detección rápida de usuarios duplicados
-- 🌐 **Trie** - Autocompletado de búsquedas
-- 🔗 **Disjoint Set (Union-Find)** - Agrupación de jugadores
-
-### Funcionalidades Futuras
-- 🏆 Sistema de logros y badges
-- 👥 Modo multijugador en tiempo real
-- 📊 Dashboard de analytics avanzado
-- 🤖 IA para generación dinámica de preguntas
-- 🌍 Soporte multiidioma
-- 📱 API GraphQL alternativa
+## 🔗 Integración full-stack
+- **CORS:** `app.frontend.url` y `VITE_API_URL` deben apuntar al mismo origen para evitar bloqueos de navegador.
+- **Sesiones:** el backend devuelve `sessionToken` + `expiresAt`; el frontend los guarda y ejecuta `logout` si la TTL expira o el usuario cierra sesión manualmente.
+- **Multiplayer:** el backend solo permite una sala activa (diseño intencional para torneos sincronizados). Ajusta `MultiplayerRoomService` si necesitas varias salas.
+- **Deep links:** `AITournamentService.buildJoinUrl(roomCode)` genera URLs con `?roomCode=XXXX&autoJoin=true`; `App.tsx` consume ese parámetro y redirige directamente a `MultiplayerScreen`.
+- **Actualización de récords:** `GameScreen` llama `AuthService.updateHighScore` cuando supera el score guardado.
 
 ---
 
-## 📝 Notas de Implementación
-
-✅ **Buenas Prácticas:**
-- Clean Architecture (Capas bien definidas)
-- SOLID Principles
-- RESTful API design
-- Exception handling centralizado
-- Logging estructurado
-- Validación de entrada robusta
-- Documentación con Javadoc
-
-🔒 **Seguridad:**
-- Nunca loguear información sensible
-- Validación de entrada en todos los endpoints
-- Rate limiting implementado
-- HTTPS requerido en producción
-- SQL Injection prevention (JPA)
-- XSS protection (Spring Security)
-
-🚀 **Performance:**
-- Connection pooling configurado
-- Índices en columnas frecuentemente consultadas
-- Caché de consultas comunes (HashMap)
-- Lazy loading de relaciones
-- Paginación en listados grandes
+## 🧪 Próximos pasos recomendados
+1. **Tests backend:** no existe `src/test/java`; crear suites para `UserService`, `MultiplayerRoomService` y controllers.
+2. **Seguridad:** migrar de MD5 a BCrypt/Spring Security si se requiere endurecer credenciales.
+3. **Observabilidad:** integrar `spring-boot-starter-actuator` para health checks (`/actuator/health`).
+4. **CI/CD:** los comandos `./mvnw` y `npm run build` están listos para pipelines de GitHub Actions o Azure Pipelines.
 
 ---
 
-## 👥 Información del Proyecto
-
-**Repositorio:** BackendProjectGame  
-**Propietario:** BurbanoValentina  
-**Branch Actual:** main
-
-**Stack Tecnológico:**
-- Java 21 LTS
-- Spring Boot 3.2+
-- PostgreSQL 15+
-- Maven 3.9+
-- Docker
-
-**API Base URL:** `http://localhost:8080/api`
-
----
-
-## 📚 Referencias y Documentación
-
-- [Spring Boot Documentation](https://spring.io/projects/spring-boot)
-- [Spring Security Reference](https://spring.io/projects/spring-security)
-- [JWT Introduction](https://jwt.io/introduction)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [Design Patterns (Gang of Four)](https://refactoring.guru/design-patterns)
-
----
-
-**Autor:** Valentina Burbano (Valen Team)  
-**Última actualización:** 14 de noviembre de 2025  
-**Versión:** 1.0.0
+**Repositorio:** BackendProjectGame · **Branch:** `main` · **Autora:** Valentina Burbano · **Última actualización:** 21/11/2025
 
