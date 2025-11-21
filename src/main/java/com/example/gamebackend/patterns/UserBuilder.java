@@ -3,7 +3,7 @@ package com.example.gamebackend.patterns;
 import com.example.gamebackend.model.User;
 
 /**
- * Builder Pattern para crear usuarios con validaciones
+ * Builder Pattern: constructs users with inline validation before persistence.
  */
 public class UserBuilder {
     private String username;
@@ -25,11 +25,6 @@ public class UserBuilder {
         return this;
     }
     
-    /**
-     * Valida y construye el usuario
-     * @return User construido
-     * @throws IllegalArgumentException si las validaciones fallan
-     */
     public User build() throws IllegalArgumentException {
         validateUsername();
         validatePassword();
@@ -40,40 +35,40 @@ public class UserBuilder {
     
     private void validateUsername() {
         if (username == null || username.trim().isEmpty()) {
-            throw new IllegalArgumentException("El nombre de usuario no puede estar vacío");
+            throw new IllegalArgumentException("Username cannot be empty");
         }
         if (username.length() < 5) {
-            throw new IllegalArgumentException("El nombre de usuario debe tener al menos 5 caracteres");
+            throw new IllegalArgumentException("Username must contain at least 5 characters");
         }
         if (username.length() > 15) {
-            throw new IllegalArgumentException("El nombre de usuario no puede tener más de 15 caracteres");
+            throw new IllegalArgumentException("Username cannot exceed 15 characters");
         }
         if (!username.matches("^[a-zA-Z0-9_]+$")) {
-            throw new IllegalArgumentException("El nombre de usuario solo puede contener letras, números y guiones bajos");
+            throw new IllegalArgumentException("Username can only contain letters, digits, and underscores");
         }
     }
     
     private void validatePassword() {
         if (password == null || password.trim().isEmpty()) {
-            throw new IllegalArgumentException("La contraseña no puede estar vacía");
+            throw new IllegalArgumentException("Password cannot be empty");
         }
         if (password.length() < 5) {
-            throw new IllegalArgumentException("La contraseña debe tener al menos 5 caracteres");
+            throw new IllegalArgumentException("Password must contain at least 5 characters");
         }
         if (password.length() > 15) {
-            throw new IllegalArgumentException("La contraseña no puede tener más de 15 caracteres");
+            throw new IllegalArgumentException("Password cannot exceed 15 characters");
         }
     }
     
     private void validateNickname() {
         if (nickname == null || nickname.trim().isEmpty()) {
-            throw new IllegalArgumentException("El apodo no puede estar vacío");
+            throw new IllegalArgumentException("Nickname cannot be empty");
         }
         if (nickname.length() < 5) {
-            throw new IllegalArgumentException("El apodo debe tener al menos 5 caracteres");
+            throw new IllegalArgumentException("Nickname must contain at least 5 characters");
         }
         if (nickname.length() > 15) {
-            throw new IllegalArgumentException("El apodo no puede tener más de 15 caracteres");
+            throw new IllegalArgumentException("Nickname cannot exceed 15 characters");
         }
     }
 }

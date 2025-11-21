@@ -25,8 +25,7 @@ import com.example.gamebackend.service.MultiplayerRoomService;
 import jakarta.validation.Valid;
 
 /**
- * Controlador REST para el modo multijugador
- * Patrón: Controller (MVC)
+ * REST Controller applying the MVC Controller Pattern for multiplayer mode.
  */
 @RestController
 @RequestMapping("/api/multiplayer")
@@ -40,7 +39,7 @@ public class MultiplayerController {
     }
 
     /**
-     * Crea una nueva sala de juego
+     * Creates a new multiplayer room.
      */
     @PostMapping("/rooms/create")
     public ResponseEntity<Map<String, Object>> createRoom(@Valid @RequestBody CreateRoomRequest request) {
@@ -50,13 +49,13 @@ public class MultiplayerController {
         response.put("success", true);
         response.put("roomCode", room.getRoomCode());
         response.put("room", room);
-        response.put("message", "Sala creada exitosamente");
+        response.put("message", "Room created successfully");
         
         return ResponseEntity.ok(response);
     }
 
     /**
-     * Permite a un jugador unirse a una sala
+     * Allows a player to join an existing room.
      */
     @PostMapping("/rooms/join")
     public ResponseEntity<Map<String, Object>> joinRoom(@Valid @RequestBody JoinRoomRequest request) {
@@ -69,13 +68,13 @@ public class MultiplayerController {
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("room", room);
-        response.put("message", "Te has unido a la sala exitosamente");
+        response.put("message", "You joined the room successfully");
         
         return ResponseEntity.ok(response);
     }
 
     /**
-     * Inicia el juego en una sala
+     * Starts the game for the referenced room.
      */
     @PostMapping("/rooms/{roomCode}/start")
     public ResponseEntity<Map<String, Object>> startGame(@PathVariable String roomCode) {
@@ -85,13 +84,13 @@ public class MultiplayerController {
         response.put("success", true);
         response.put("room", room);
         response.put("currentQuestion", room.getCurrentQuestion());
-        response.put("message", "Juego iniciado");
+        response.put("message", "Game started");
         
         return ResponseEntity.ok(response);
     }
 
     /**
-     * Envía una respuesta a la pregunta actual
+     * Submits an answer for the active question.
      */
     @PostMapping("/rooms/answer")
     public ResponseEntity<Map<String, Object>> submitAnswer(@Valid @RequestBody SubmitAnswerRequest request) {
@@ -117,7 +116,7 @@ public class MultiplayerController {
     }
 
     /**
-     * Obtiene el estado actual de una sala
+     * Returns the current state for a room.
      */
     @GetMapping("/rooms/{roomCode}")
     public ResponseEntity<Map<String, Object>> getRoom(@PathVariable String roomCode) {
@@ -126,7 +125,7 @@ public class MultiplayerController {
         if (room == null) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("success", false);
-            errorResponse.put("message", "Sala no encontrada");
+            errorResponse.put("message", "Room not found");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
         }
         
@@ -139,7 +138,7 @@ public class MultiplayerController {
     }
 
     /**
-     * Obtiene el ranking de una sala
+     * Fetches the ranking for a room.
      */
     @GetMapping("/rooms/{roomCode}/ranking")
     public ResponseEntity<Map<String, Object>> getRanking(@PathVariable String roomCode) {
@@ -153,7 +152,7 @@ public class MultiplayerController {
     }
 
     /**
-     * Permite a un jugador salir de una sala
+     * Allows a player to leave the room.
      */
     @PostMapping("/rooms/{roomCode}/leave/{playerId}")
     public ResponseEntity<Map<String, Object>> leaveRoom(
@@ -164,13 +163,13 @@ public class MultiplayerController {
         
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
-        response.put("message", "Has salido de la sala");
+        response.put("message", "You left the room");
         
         return ResponseEntity.ok(response);
     }
 
     /**
-     * Obtiene todas las salas activas (para debugging)
+     * Lists every active room (debug helper).
      */
     @GetMapping("/rooms")
     public ResponseEntity<Map<String, Object>> getAllRooms() {
@@ -207,7 +206,7 @@ public class MultiplayerController {
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception e) {
         Map<String, Object> response = new HashMap<>();
         response.put("success", false);
-        response.put("message", "Error interno del servidor: " + e.getMessage());
+        response.put("message", "Internal server error: " + e.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 }

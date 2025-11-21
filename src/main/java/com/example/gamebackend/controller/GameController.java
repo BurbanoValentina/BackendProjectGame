@@ -19,7 +19,7 @@ import com.example.gamebackend.patterns.GameFacade;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/games")
+@RequestMapping("/api/games")
 @CrossOrigin(origins = "${app.frontend.url}")
 public class GameController {
 

@@ -14,20 +14,22 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.gamebackend.dto.AuthResponse;
 import com.example.gamebackend.dto.LoginRequest;
+import com.example.gamebackend.dto.PasswordChangeRequest;
 import com.example.gamebackend.dto.RegisterRequest;
 import com.example.gamebackend.service.UserService;
+import com.example.gamebackend.service.UserSessionService;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "${app.frontend.url}")
 public class AuthController {
     
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private UserSessionService sessionService;
     
-    /**
-     * Endpoint para registrar un nuevo usuario
-     */
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
         AuthResponse response = userService.register(request);
@@ -39,9 +41,6 @@ public class AuthController {
         }
     }
     
-    /**
-     * Endpoint para iniciar sesión
-     */
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
         AuthResponse response = userService.login(request);
@@ -53,9 +52,6 @@ public class AuthController {
         }
     }
     
-    /**
-     * Endpoint para actualizar el high score
-     */
         @PutMapping("/user/{userId}/highscore")
         public ResponseEntity<String> updateHighScore(
             @PathVariable String userId,
@@ -63,9 +59,24 @@ public class AuthController {
         boolean updated = userService.updateHighScore(userId, score);
         
         if (updated) {
-            return ResponseEntity.ok("High score actualizado");
+            return ResponseEntity.ok("High score updated");
         } else {
-            return ResponseEntity.badRequest().body("No se pudo actualizar el high score");
+            return ResponseEntity.badRequest().body("Unable to update the high score");
         }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestParam String token) {
+        sessionService.closeSession(token, "Manual logout");
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/password/change")
+    public ResponseEntity<String> changePassword(@RequestBody PasswordChangeRequest request) {
+        boolean updated = userService.changePassword(request);
+        if (updated) {
+            return ResponseEntity.ok("Password updated successfully");
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found with the provided identifier");
     }
 }

@@ -1,15 +1,14 @@
 package com.example.gamebackend.model;
 
 /**
- * Representa un jugador en una sala multijugador
- * Patrón: Entity/Model con Builder Pattern
+ * MultiplayerPlayer represents the Entity/Model and exposes a Builder Pattern for bots.
  */
 public class MultiplayerPlayer {
     private String id;
     private String username;
     private int score;
     private int answeredCount;
-    private long totalResponseTime; // en milisegundos
+    private long totalResponseTime; // stored in milliseconds
     private boolean isBot;
     private boolean isReady;
 
@@ -28,7 +27,7 @@ public class MultiplayerPlayer {
         this.isBot = isBot;
     }
 
-    // Getters y Setters
+    // Getters and setters
     public String getId() {
         return id;
     }
@@ -103,11 +102,11 @@ public class MultiplayerPlayer {
     }
 
     /**
-     * Builder Pattern para crear jugadores
+     * Builder Pattern to simplify bot creation.
      */
     public static class Builder {
-        private String id;
-        private String username;
+        private final String id;
+        private final String username;
         private boolean isBot = false;
 
         public Builder(String id, String username) {

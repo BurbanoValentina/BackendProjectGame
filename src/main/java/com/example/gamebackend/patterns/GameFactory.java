@@ -2,6 +2,9 @@ package com.example.gamebackend.patterns;
 
 import com.example.gamebackend.model.Game;
 
+/**
+ * Factory Pattern: centralizes Game creation while delegating to AbstractGameFactory.
+ */
 public final class GameFactory {
 
     private GameFactory() {

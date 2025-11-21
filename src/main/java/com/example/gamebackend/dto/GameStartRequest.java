@@ -4,10 +4,10 @@ import jakarta.validation.constraints.NotBlank;
 
 public class GameStartRequest {
 
-    @NotBlank(message = "El nombre del jugador es obligatorio")
+    @NotBlank(message = "Player name is required")
     private String playerName;
 
-    @NotBlank(message = "La dificultad es obligatoria")
+    @NotBlank(message = "Difficulty is required")
     private String difficulty;
 
     public String getPlayerName() {

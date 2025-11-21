@@ -5,8 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Representa una sala de juego multijugador
- * Patrón: Entity/Model
+ * MultiplayerRoom implements the Entity/Model pattern for multiplayer matches.
  */
 public class MultiplayerRoom {
     private String roomCode;
@@ -20,9 +19,9 @@ public class MultiplayerRoom {
     private String hostPlayerId;
 
     public enum RoomStatus {
-        WAITING,    // Esperando jugadores
-        PLAYING,    // Juego en progreso
-        FINISHED    // Juego terminado
+        WAITING,    // Waiting for players
+        PLAYING,    // Match running
+        FINISHED    // Match finished
     }
 
     public MultiplayerRoom(String roomCode, String hostPlayerId) {
@@ -35,7 +34,7 @@ public class MultiplayerRoom {
         this.createdAt = LocalDateTime.now();
     }
 
-    // Getters y Setters
+    // Getters and setters
     public String getRoomCode() {
         return roomCode;
     }

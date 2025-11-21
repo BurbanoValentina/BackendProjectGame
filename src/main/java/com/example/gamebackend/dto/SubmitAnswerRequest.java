@@ -1,22 +1,25 @@
 package com.example.gamebackend.dto;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
 /**
- * DTO para enviar una respuesta en el modo multijugador
+ * DTO used to send an answer in multiplayer mode.
  */
 public class SubmitAnswerRequest {
     
-    @NotBlank(message = "El código de sala es requerido")
+    @NotBlank(message = "Room code is required")
     private String roomCode;
     
-    @NotBlank(message = "El ID del jugador es requerido")
+    @NotBlank(message = "Player id is required")
     private String playerId;
     
+    @Min(value = 0, message = "Answer must be zero or positive")
+    @Max(value = 999, message = "Answer must contain at most three digits")
     private int answer;
     
-    @Min(value = 0, message = "El tiempo de respuesta debe ser positivo")
+    @Min(value = 0, message = "Response time must be positive")
     private long responseTime;
 
     public SubmitAnswerRequest() {

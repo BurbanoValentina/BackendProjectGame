@@ -44,25 +44,25 @@ public class SqliteToMongoMigrator {
 
     public void migrate() throws SQLException {
         if (!Files.exists(sqlitePath)) {
-            throw new IllegalStateException("No se encontró el archivo SQLite en " + sqlitePath);
+            throw new IllegalStateException("SQLite file not found at " + sqlitePath);
         }
         String jdbcUrl = "jdbc:sqlite:" + sqlitePath;
-        System.out.printf(Locale.ROOT, "Conectando a SQLite (%s)%n", jdbcUrl);
+        System.out.printf(Locale.ROOT, "Connecting to SQLite (%s)%n", jdbcUrl);
         try (Connection sqliteConnection = DriverManager.getConnection(jdbcUrl);
              MongoClient mongoClient = MongoClients.create(mongoUri)) {
             MongoDatabase mongoDatabase = mongoClient.getDatabase(mongoDatabaseName);
             List<String> tableNames = fetchTableNames(sqliteConnection);
             if (tableNames.isEmpty()) {
-                System.out.println("SQLite no tiene tablas migrables.");
+                System.out.println("SQLite database does not contain migrable tables.");
                 return;
             }
-            System.out.printf(Locale.ROOT, "Iniciando migración de %d tablas hacia MongoDB (%s)%n",
+            System.out.printf(Locale.ROOT, "Starting migration of %d tables into MongoDB (%s)%n",
                     tableNames.size(), mongoDatabaseName);
             Set<String> existingCollections = fetchCollectionNames(mongoDatabase);
             for (String tableName : tableNames) {
                 MongoCollection<Document> collection = mongoDatabase.getCollection(tableName);
                 if (dropCollections && existingCollections.contains(tableName)) {
-                    System.out.printf(Locale.ROOT, "Eliminando colección existente %s%n", tableName);
+                    System.out.printf(Locale.ROOT, "Dropping existing collection %s%n", tableName);
                     collection.drop();
                 }
                 migrateTable(sqliteConnection, collection, tableName);
@@ -121,46 +121,20 @@ public class SqliteToMongoMigrator {
         if (!batch.isEmpty()) {
             collection.insertMany(batch);
         }
-        System.out.printf(Locale.ROOT, "Tabla %s migrada (%d filas).%n", tableName, migratedRows);
+        System.out.printf(Locale.ROOT, "Table %s migrated (%d rows).%n", tableName, migratedRows);
     }
 
     private Object resolveValue(ResultSet resultSet, ResultSetMetaData metaData, int columnIndex) throws SQLException {
         int columnType = metaData.getColumnType(columnIndex);
-        Object value;
-        switch (columnType) {
-            case Types.BOOLEAN:
-            case Types.BIT:
-                value = resultSet.getBoolean(columnIndex);
-                break;
-            case Types.TINYINT:
-            case Types.SMALLINT:
-            case Types.INTEGER:
-            case Types.BIGINT:
-                value = resultSet.getLong(columnIndex);
-                break;
-            case Types.FLOAT:
-            case Types.REAL:
-            case Types.DOUBLE:
-                value = resultSet.getDouble(columnIndex);
-                break;
-            case Types.DECIMAL:
-            case Types.NUMERIC:
-                value = resultSet.getBigDecimal(columnIndex);
-                break;
-            case Types.DATE:
-            case Types.TIME:
-            case Types.TIMESTAMP:
-                value = resultSet.getTimestamp(columnIndex);
-                break;
-            case Types.BINARY:
-            case Types.VARBINARY:
-            case Types.LONGVARBINARY:
-            case Types.BLOB:
-                value = resultSet.getBytes(columnIndex);
-                break;
-            default:
-                value = resultSet.getString(columnIndex);
-        }
+        Object value = switch (columnType) {
+            case Types.BOOLEAN, Types.BIT -> resultSet.getBoolean(columnIndex);
+            case Types.TINYINT, Types.SMALLINT, Types.INTEGER, Types.BIGINT -> resultSet.getLong(columnIndex);
+            case Types.FLOAT, Types.REAL, Types.DOUBLE -> resultSet.getDouble(columnIndex);
+            case Types.DECIMAL, Types.NUMERIC -> resultSet.getBigDecimal(columnIndex);
+            case Types.DATE, Types.TIME, Types.TIMESTAMP -> resultSet.getTimestamp(columnIndex);
+            case Types.BINARY, Types.VARBINARY, Types.LONGVARBINARY, Types.BLOB -> resultSet.getBytes(columnIndex);
+            default -> resultSet.getString(columnIndex);
+        };
         if (resultSet.wasNull()) {
             return null;
         }

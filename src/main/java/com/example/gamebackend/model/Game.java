@@ -16,27 +16,27 @@ public class Game {
     @Id
     private String id;
 
-    @NotBlank(message = "El nombre del jugador es obligatorio")
+    @NotBlank(message = "Player name is required")
     @Field("player_name")
     private String playerName;
 
-    @NotBlank(message = "La dificultad es obligatoria")
+    @NotBlank(message = "Difficulty is required")
     @Field("difficulty")
     private String difficulty;
 
-    @Min(value = 0, message = "El puntaje no puede ser negativo")
+    @Min(value = 0, message = "Score cannot be negative")
     @Field("score")
     private int score;
 
-    @Min(value = 0, message = "Los aciertos no pueden ser negativos")
+    @Min(value = 0, message = "Correct answers cannot be negative")
     @Field("correct_answers")
     private int correctAnswers;
 
-    @Min(value = 0, message = "Las preguntas totales no pueden ser negativas")
+    @Min(value = 0, message = "Total questions cannot be negative")
     @Field("total_questions")
     private int totalQuestions;
 
-    @Min(value = 0, message = "La duración no puede ser negativa")
+    @Min(value = 0, message = "Duration cannot be negative")
     @Field("duration_seconds")
     private long durationSeconds;
 

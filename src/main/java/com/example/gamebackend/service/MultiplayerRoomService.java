@@ -13,34 +13,33 @@ import com.example.gamebackend.model.MultiplayerQuestion;
 import com.example.gamebackend.model.MultiplayerRoom;
 
 /**
- * Servicio para gestionar las salas de juego multijugador
- * Patrones aplicados:
- * - Singleton (a través de @Service de Spring)
- * - Factory (para crear preguntas y salas)
- * - Repository Pattern (almacenamiento en memoria con ConcurrentHashMap)
+ * MultiplayerRoomService implements several patterns:
+ * - Singleton via Spring's @Service lifecycle.
+ * - Factory Method to create rooms and math questions.
+ * - Repository Pattern by storing rooms inside an in-memory ConcurrentHashMap.
  */
 @Service
 public class MultiplayerRoomService {
 
-    // Repository Pattern: Almacenamiento de salas en memoria
+    // Repository Pattern: in-memory storage for active rooms
     private final ConcurrentHashMap<String, MultiplayerRoom> rooms = new ConcurrentHashMap<>();
     private final Random random = new Random();
     private static final int TOTAL_QUESTIONS = 5;
     private static final int POINTS_PER_CORRECT = 10;
 
     /**
-     * Factory Method: Crea una nueva sala con código único
+     * Factory Method: creates a new room with a unique code.
      */
     public MultiplayerRoom createRoom(String hostPlayerId, String hostUsername) {
         String roomCode = generateRoomCode();
         
         MultiplayerRoom room = new MultiplayerRoom(roomCode, hostPlayerId);
         
-        // Agregar el host como primer jugador
+        // Add the host as the first human player
         MultiplayerPlayer host = new MultiplayerPlayer(hostPlayerId, hostUsername);
         room.addPlayer(host);
         
-        // Agregar bot automáticamente
+        // Add the bot automatically
         MultiplayerPlayer bot = new MultiplayerPlayer.Builder("bot-" + roomCode, "ChatBot")
                 .bot(true)
                 .build();
@@ -52,21 +51,21 @@ public class MultiplayerRoomService {
     }
 
     /**
-     * Permite a un jugador unirse a una sala existente
+     * Allows a human player to join an existing room.
      */
     public MultiplayerRoom joinRoom(String roomCode, String playerId, String username) {
         MultiplayerRoom room = rooms.get(roomCode.toUpperCase());
         
         if (room == null) {
-            throw new IllegalArgumentException("Sala no encontrada");
+            throw new IllegalArgumentException("Room not found");
         }
         
         if (room.getStatus() != MultiplayerRoom.RoomStatus.WAITING) {
-            throw new IllegalStateException("La sala ya está en juego");
+            throw new IllegalStateException("The room is already playing");
         }
         
         if (room.getPlayers().size() >= 5) {
-            throw new IllegalStateException("La sala está llena");
+            throw new IllegalStateException("The room is already full");
         }
         
         MultiplayerPlayer player = new MultiplayerPlayer(playerId, username);
@@ -76,20 +75,20 @@ public class MultiplayerRoomService {
     }
 
     /**
-     * Inicia el juego en una sala
+     * Starts the multiplayer match for the provided room code.
      */
     public MultiplayerRoom startGame(String roomCode) {
         MultiplayerRoom room = rooms.get(roomCode.toUpperCase());
         
         if (room == null) {
-            throw new IllegalArgumentException("Sala no encontrada");
+            throw new IllegalArgumentException("Room not found");
         }
         
         if (!room.canStart()) {
-            throw new IllegalStateException("No se puede iniciar el juego");
+            throw new IllegalStateException("The game cannot be started yet");
         }
         
-        // Factory Method: Generar preguntas
+        // Factory Method: generate the math questions used in the match
         List<MultiplayerQuestion> questions = generateQuestions(TOTAL_QUESTIONS);
         room.setQuestions(questions);
         room.setStatus(MultiplayerRoom.RoomStatus.PLAYING);
@@ -99,27 +98,31 @@ public class MultiplayerRoomService {
     }
 
     /**
-     * Procesa la respuesta de un jugador
+     * Processes a player answer and advances the question flow.
      */
     public MultiplayerRoom submitAnswer(String roomCode, String playerId, int answer, long responseTime) {
         MultiplayerRoom room = rooms.get(roomCode.toUpperCase());
         
         if (room == null) {
-            throw new IllegalArgumentException("Sala no encontrada");
+            throw new IllegalArgumentException("Room not found");
         }
         
         MultiplayerQuestion currentQuestion = room.getCurrentQuestion();
         if (currentQuestion == null) {
-            throw new IllegalStateException("No hay pregunta activa");
+            throw new IllegalStateException("There is no active question");
+        }
+
+        if (answer < 0 || answer > 999) {
+            throw new IllegalArgumentException("Answers must contain between 1 and 3 numeric digits");
         }
         
-        // Buscar el jugador
+        // Locate the player inside the room roster
         MultiplayerPlayer player = room.getPlayers().stream()
                 .filter(p -> p.getId().equals(playerId))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Jugador no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Player not found"));
         
-        // Actualizar estadísticas del jugador
+        // Update per-player statistics based on the attempt
         player.incrementAnsweredCount();
         player.addResponseTime(responseTime);
         
@@ -127,19 +130,19 @@ public class MultiplayerRoomService {
             player.addScore(POINTS_PER_CORRECT);
         }
         
-        // Verificar si todos los jugadores humanos respondieron
+        // Check whether all human players already answered
         boolean allAnswered = room.getPlayers().stream()
                 .filter(p -> !p.isBot())
                 .allMatch(p -> p.getAnsweredCount() > room.getCurrentQuestionIndex());
         
         if (allAnswered) {
-            // Simular respuesta del bot
+            // Simulate bot participation so each round advances consistently
             simulateBotAnswer(room);
             
             // Avanzar a la siguiente pregunta
             room.nextQuestion();
             
-            // Verificar si el juego terminó
+            // Determine if the match already finished
             if (room.isFinished()) {
                 room.setStatus(MultiplayerRoom.RoomStatus.FINISHED);
                 room.setFinishedAt(java.time.LocalDateTime.now());
@@ -150,7 +153,7 @@ public class MultiplayerRoomService {
     }
 
     /**
-     * Simula la respuesta del bot con alta precisión
+     * Simulates a bot response with configurable accuracy.
      */
     private void simulateBotAnswer(MultiplayerRoom room) {
         MultiplayerQuestion currentQuestion = room.getCurrentQuestion();
@@ -163,7 +166,7 @@ public class MultiplayerRoomService {
         
         if (bot == null) return;
         
-        // Bot tiene 80% de precisión
+        // Bot accuracy is set to roughly 80%
         boolean isCorrect = random.nextDouble() > 0.2;
         
         // Tiempo de respuesta del bot: entre 2 y 5 segundos
@@ -178,16 +181,16 @@ public class MultiplayerRoomService {
     }
 
     /**
-     * Obtiene el ranking de jugadores en una sala
+     * Builds the ranking for a room.
      */
     public List<MultiplayerPlayer> getRanking(String roomCode) {
         MultiplayerRoom room = rooms.get(roomCode.toUpperCase());
         
         if (room == null) {
-            throw new IllegalArgumentException("Sala no encontrada");
+            throw new IllegalArgumentException("Room not found");
         }
         
-        // Ordenar por: 1) Puntuación descendente, 2) Tiempo promedio ascendente
+        // Sort by: score (desc) and average response time (asc)
         return room.getPlayers().stream()
                 .sorted((p1, p2) -> {
                     int scoreCompare = Integer.compare(p2.getScore(), p1.getScore());
@@ -199,14 +202,14 @@ public class MultiplayerRoomService {
     }
 
     /**
-     * Obtiene una sala por su código
+     * Looks up a room by its code.
      */
     public MultiplayerRoom getRoom(String roomCode) {
         return rooms.get(roomCode.toUpperCase());
     }
 
     /**
-     * Elimina un jugador de una sala
+     * Removes a player from the referenced room.
      */
     public void leaveRoom(String roomCode, String playerId) {
         MultiplayerRoom room = rooms.get(roomCode.toUpperCase());
@@ -214,7 +217,7 @@ public class MultiplayerRoomService {
         if (room != null) {
             room.removePlayer(playerId);
             
-            // Si no quedan jugadores humanos, eliminar la sala
+            // Remove the room if no human players remain
             boolean hasHumanPlayers = room.getPlayers().stream()
                     .anyMatch(p -> !p.isBot());
             
@@ -225,7 +228,7 @@ public class MultiplayerRoomService {
     }
 
     /**
-     * Factory Method: Genera un código de sala único de 6 caracteres
+     * Factory Method: generates a random 6-character room code.
      */
     private String generateRoomCode() {
         String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -242,7 +245,7 @@ public class MultiplayerRoomService {
     }
 
     /**
-     * Factory Method: Genera una lista de preguntas matemáticas
+     * Factory Method: generates a list of math questions.
      */
     private List<MultiplayerQuestion> generateQuestions(int count) {
         List<MultiplayerQuestion> questions = new ArrayList<>();
@@ -255,7 +258,7 @@ public class MultiplayerRoomService {
     }
 
     /**
-     * Factory Method: Genera una pregunta matemática aleatoria
+     * Factory Method: generates a single math question.
      */
     private MultiplayerQuestion generateQuestion(int id) {
         int a = random.nextInt(20) + 1;
@@ -264,34 +267,20 @@ public class MultiplayerRoomService {
         String[] operations = {"+", "-", "*"};
         String operation = operations[random.nextInt(operations.length)];
         
-        String prompt;
-        int answer;
-        
-        switch (operation) {
-            case "+":
-                prompt = a + " + " + b;
-                answer = a + b;
-                break;
-            case "-":
+        return switch (operation) {
+            case "+" -> new MultiplayerQuestion(id, a + " + " + b, a + b);
+            case "-" -> {
                 int max = Math.max(a, b);
                 int min = Math.min(a, b);
-                prompt = max + " - " + min;
-                answer = max - min;
-                break;
-            case "*":
-                prompt = a + " * " + b;
-                answer = a * b;
-                break;
-            default:
-                prompt = a + " + " + b;
-                answer = a + b;
-        }
-        
-        return new MultiplayerQuestion(id, prompt, answer);
+                yield new MultiplayerQuestion(id, max + " - " + min, max - min);
+            }
+            case "*" -> new MultiplayerQuestion(id, a + " * " + b, a * b);
+            default -> new MultiplayerQuestion(id, a + " + " + b, a + b);
+        };
     }
 
     /**
-     * Obtiene todas las salas activas (para debugging)
+     * Exposes all rooms (useful for diagnostics).
      */
     public List<MultiplayerRoom> getAllRooms() {
         return new ArrayList<>(rooms.values());

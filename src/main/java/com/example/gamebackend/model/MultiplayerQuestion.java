@@ -1,8 +1,7 @@
 package com.example.gamebackend.model;
 
 /**
- * Representa una pregunta en el modo multijugador
- * Patrón: Value Object
+ * MultiplayerQuestion models the Value Object pattern inside multiplayer rooms.
  */
 public class MultiplayerQuestion {
     private int id;
@@ -17,7 +16,7 @@ public class MultiplayerQuestion {
         this.createdAt = System.currentTimeMillis();
     }
 
-    // Getters y Setters
+    // Getters and setters
     public int getId() {
         return id;
     }

@@ -5,6 +5,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.example.gamebackend.model.Game;
 
+/**
+ * Abstract Factory Pattern: centralizes Game creation per difficulty.
+ */
 public abstract class AbstractGameFactory {
 
     private static final Map<String, AbstractGameFactory> FACTORIES = createDefaultFactories();

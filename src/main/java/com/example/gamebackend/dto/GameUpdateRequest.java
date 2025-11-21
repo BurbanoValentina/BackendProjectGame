@@ -4,16 +4,16 @@ import jakarta.validation.constraints.Min;
 
 public class GameUpdateRequest {
 
-    @Min(value = 0, message = "El puntaje no puede ser negativo")
+    @Min(value = 0, message = "Score cannot be negative")
     private int score;
 
-    @Min(value = 0, message = "Los aciertos no pueden ser negativos")
+    @Min(value = 0, message = "Correct answers cannot be negative")
     private int correctAnswers;
 
-    @Min(value = 0, message = "El total de preguntas no puede ser negativo")
+    @Min(value = 0, message = "Total questions cannot be negative")
     private int totalQuestions;
 
-    @Min(value = 0, message = "La duración no puede ser negativa")
+    @Min(value = 0, message = "Duration cannot be negative")
     private long durationSeconds;
 
     public int getScore() {

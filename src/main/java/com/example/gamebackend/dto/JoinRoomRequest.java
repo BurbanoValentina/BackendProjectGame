@@ -3,17 +3,17 @@ package com.example.gamebackend.dto;
 import jakarta.validation.constraints.NotBlank;
 
 /**
- * DTO para unirse a una sala multijugador
+ * Data Transfer Object used to join a multiplayer room.
  */
 public class JoinRoomRequest {
     
-    @NotBlank(message = "El código de sala es requerido")
+    @NotBlank(message = "Room code is required")
     private String roomCode;
     
-    @NotBlank(message = "El ID del jugador es requerido")
+    @NotBlank(message = "Player id is required")
     private String playerId;
     
-    @NotBlank(message = "El nombre de usuario es requerido")
+    @NotBlank(message = "Username is required")
     private String username;
 
     public JoinRoomRequest() {

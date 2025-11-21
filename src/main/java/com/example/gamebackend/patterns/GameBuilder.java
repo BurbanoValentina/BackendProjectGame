@@ -2,6 +2,9 @@ package com.example.gamebackend.patterns;
 
 import com.example.gamebackend.model.Game;
 
+/**
+ * Builder Pattern: step-by-step construction for Game instances.
+ */
 public class GameBuilder {
     private String id;
     private String playerName;

@@ -7,9 +7,12 @@ import org.springframework.stereotype.Service;
 
 import com.example.gamebackend.dto.AuthResponse;
 import com.example.gamebackend.dto.LoginRequest;
+import com.example.gamebackend.dto.PasswordChangeRequest;
 import com.example.gamebackend.dto.RegisterRequest;
+import com.example.gamebackend.dto.SessionDTO;
 import com.example.gamebackend.dto.UserDTO;
 import com.example.gamebackend.model.User;
+import com.example.gamebackend.model.UserSession;
 import com.example.gamebackend.patterns.UserBuilder;
 import com.example.gamebackend.repository.UserRepository;
 import com.example.gamebackend.util.MD5Util;
@@ -19,77 +22,82 @@ public class UserService {
     
     @Autowired
     private UserRepository userRepository;
-    
-    // Utilidad MD5 ahora con métodos estáticos
-    
+
+    @Autowired
+    private UserSessionService sessionService;
+
     /**
-     * Registra un nuevo usuario con validaciones y encriptación MD5
-     * Usa Builder Pattern para construcción y validación
+     * Registers a new user using the Builder Pattern and MD5 hashing.
      */
     public AuthResponse register(RegisterRequest request) {
         try {
-            // Validar si el usuario ya existe
+            // Validate username and nickname uniqueness
             if (userRepository.existsByUsername(request.getUsername())) {
-                return new AuthResponse(false, "El nombre de usuario ya está en uso");
+                return new AuthResponse(false, "Username is already taken");
             }
             
             if (userRepository.existsByNickname(request.getNickname())) {
-                return new AuthResponse(false, "El apodo ya está en uso");
+                return new AuthResponse(false, "Nickname is already taken");
             }
             
-            // Usar Builder Pattern para crear y validar el usuario
+            // Builder Pattern performs validation before hashing the password
                 UserBuilder builder = new UserBuilder();
-                // Validar primero con la contraseña en texto plano
+                // Validate the password while it is still in plain text
                 User user = builder
                     .setUsername(request.getUsername())
                     .setPassword(request.getPassword())
                     .setNickname(request.getNickname())
                     .build();
-                // Encriptar la contraseña solo después de pasar las validaciones
+                // Encrypt the password only after it passes Builder validation
                 user.setPassword(MD5Util.encrypt(user.getPassword()));
             
             // Guardar usuario
             User savedUser = userRepository.save(user);
             
-            // Convertir a DTO (sin exponer la contraseña)
+            // Convert entity to DTO without exposing password hashes
             UserDTO userDTO = convertToDTO(savedUser);
             
-            return new AuthResponse(true, "Usuario registrado exitosamente", userDTO);
+            UserSession session = sessionService.registerSession(savedUser.getId());
+            SessionDTO sessionDTO = new SessionDTO(session.getId(), session.getSessionToken(), session.getExpiresAt());
+            return new AuthResponse(true, "User registered successfully", userDTO, sessionDTO);
             
         } catch (IllegalArgumentException e) {
             return new AuthResponse(false, e.getMessage());
         } catch (Exception e) {
-            return new AuthResponse(false, "Error al registrar el usuario: " + e.getMessage());
+            return new AuthResponse(false, "Unable to register the user: " + e.getMessage());
         }
     }
     
     /**
-     * Autentica un usuario existente
+     * Authenticates an existing user.
      */
     public AuthResponse login(LoginRequest request) {
         try {
-            // Buscar usuario por username
+            // Look up user by username
             Optional<User> userOptional = userRepository.findByUsername(request.getUsername());
             
             if (userOptional.isEmpty()) {
-                return new AuthResponse(false, "Usuario no encontrado");
+                return new AuthResponse(false, "User not found");
             }
             
             User user = userOptional.get();
             
-            // Verificar contraseña usando MD5
+            // Verify password using MD5 hash comparison
             String encryptedPassword = MD5Util.encrypt(request.getPassword());
             
             if (!user.getPassword().equals(encryptedPassword)) {
-                return new AuthResponse(false, "Contraseña incorrecta");
+                return new AuthResponse(false, "Invalid credentials");
             }
             
             // Login exitoso
             UserDTO userDTO = convertToDTO(user);
-            return new AuthResponse(true, "Login exitoso", userDTO);
+            sessionService.closeExpiredSessionsForUser(user.getId());
+            UserSession session = sessionService.registerSession(user.getId());
+            SessionDTO sessionDTO = new SessionDTO(session.getId(), session.getSessionToken(), session.getExpiresAt());
+            return new AuthResponse(true, "Login successful", userDTO, sessionDTO);
             
         } catch (Exception e) {
-            return new AuthResponse(false, "Error al iniciar sesión: " + e.getMessage());
+            return new AuthResponse(false, "Unable to complete login: " + e.getMessage());
         }
     }
     
@@ -104,7 +112,7 @@ public class UserService {
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             Integer storedHighScore = user.getHighScore();
-            int currentHighScore = storedHighScore != null ? storedHighScore.intValue() : 0;
+            int currentHighScore = storedHighScore != null ? storedHighScore : 0;
             if (newScore > currentHighScore) {
                 user.setHighScore(newScore);
                 userRepository.save(user);
@@ -113,9 +121,33 @@ public class UserService {
         }
         return false;
     }
+
+    public boolean changePassword(PasswordChangeRequest request) {
+        Optional<User> userOptional = userRepository.findByUsername(request.getIdentifier());
+
+        if (userOptional.isEmpty()) {
+            userOptional = userRepository.findByNickname(request.getIdentifier());
+        }
+
+        if (userOptional.isEmpty()) {
+            return false;
+        }
+
+        User user = userOptional.get();
+        UserBuilder builder = new UserBuilder();
+        builder.setUsername(user.getUsername())
+               .setNickname(user.getNickname())
+               .setPassword(request.getNewPassword())
+               .build();
+
+        user.setPassword(MD5Util.encrypt(request.getNewPassword()));
+        userRepository.save(user);
+        sessionService.closeExpiredSessionsForUser(user.getId());
+        return true;
+    }
     
     /**
-     * Convierte User a UserDTO (sin exponer información sensible)
+     * Maps User entities to DTOs without exposing sensitive information.
      */
     private UserDTO convertToDTO(User user) {
         return new UserDTO(

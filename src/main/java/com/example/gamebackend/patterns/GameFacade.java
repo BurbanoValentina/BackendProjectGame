@@ -7,6 +7,9 @@ import org.springframework.stereotype.Component;
 import com.example.gamebackend.model.Game;
 import com.example.gamebackend.service.GameService;
 
+/**
+ * Facade Pattern: exposes a thin API to orchestrate GameService use cases.
+ */
 @Component
 public class GameFacade {
 

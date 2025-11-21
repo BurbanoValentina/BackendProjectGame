@@ -6,6 +6,9 @@ import java.sql.SQLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Singleton Pattern: keeps a single SQLite connection for legacy imports.
+ */
 public class SingletonDatabaseConnection {
     private static final Logger LOGGER = Logger.getLogger(SingletonDatabaseConnection.class.getName());
     private static SingletonDatabaseConnection instance;
@@ -15,8 +18,8 @@ public class SingletonDatabaseConnection {
         try {
             this.connection = DriverManager.getConnection("jdbc:sqlite:game.db");
         } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "No se pudo crear la conexión SQLite", e);
-            throw new IllegalStateException("No se pudo inicializar la conexión a la base de datos", e);
+            LOGGER.log(Level.SEVERE, "Unable to create the SQLite connection", e);
+            throw new IllegalStateException("Failed to initialize the database connection", e);
         }
     }
 

@@ -3,14 +3,14 @@ package com.example.gamebackend.dto;
 import jakarta.validation.constraints.NotBlank;
 
 /**
- * DTO para crear una sala multijugador
+ * DTO used to create a new multiplayer room.
  */
 public class CreateRoomRequest {
     
-    @NotBlank(message = "El ID del jugador es requerido")
+    @NotBlank(message = "Player id is required")
     private String playerId;
     
-    @NotBlank(message = "El nombre de usuario es requerido")
+    @NotBlank(message = "Username is required")
     private String username;
 
     public CreateRoomRequest() {

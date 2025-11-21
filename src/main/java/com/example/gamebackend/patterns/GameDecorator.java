@@ -2,6 +2,9 @@ package com.example.gamebackend.patterns;
 
 import com.example.gamebackend.model.Game;
 
+/**
+ * Decorator Pattern: extends Game behavior without modifying the base entity.
+ */
 public abstract class GameDecorator extends Game {
     protected final Game decoratedGame;
 

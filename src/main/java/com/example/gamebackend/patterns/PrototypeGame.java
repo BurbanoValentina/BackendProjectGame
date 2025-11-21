@@ -2,6 +2,9 @@ package com.example.gamebackend.patterns;
 
 import com.example.gamebackend.model.Game;
 
+/**
+ * Prototype Pattern: clones Game instances for scenario testing.
+ */
 public class PrototypeGame implements Cloneable {
     private final Game game;
 

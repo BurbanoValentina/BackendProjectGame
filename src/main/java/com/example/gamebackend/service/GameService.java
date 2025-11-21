@@ -26,29 +26,29 @@ public class GameService {
     }
 
     public Game getGameById(String id) {
-        String safeId = Objects.requireNonNull(id, "El id no puede ser nulo");
+        String safeId = Objects.requireNonNull(id, "Id cannot be null");
         return gameRepository.findById(safeId).orElse(null);
     }
 
     public Game createGameSession(String playerName, String difficulty) {
-        String safePlayerName = Objects.requireNonNull(playerName, "El nombre del jugador es obligatorio");
-        String safeDifficulty = Objects.requireNonNull(difficulty, "La dificultad es obligatoria");
+        String safePlayerName = Objects.requireNonNull(playerName, "Player name is required");
+        String safeDifficulty = Objects.requireNonNull(difficulty, "Difficulty is required");
         Game builtGame = Objects.requireNonNull(
             GameFactory.createGame(safePlayerName, safeDifficulty),
-            "La fábrica no puede producir un juego nulo"
+            "The factory cannot return a null game"
         );
         return gameRepository.save(builtGame);
     }
 
     public Game addGame(Game game) {
-        Game safeGame = Objects.requireNonNull(game, "El juego es obligatorio");
+        Game safeGame = Objects.requireNonNull(game, "Game payload is required");
         return gameRepository.save(safeGame);
     }
 
     public Game updateGameProgress(String id, int score, int correctAnswers, int totalQuestions, long durationSeconds) {
-        String safeId = Objects.requireNonNull(id, "El id no puede ser nulo");
+        String safeId = Objects.requireNonNull(id, "Id cannot be null");
         Game existing = gameRepository.findById(safeId)
-            .orElseThrow(() -> new IllegalArgumentException("La partida con id " + id + " no existe."));
+            .orElseThrow(() -> new IllegalArgumentException("Game session with id " + id + " does not exist"));
         existing.setScore(score);
         existing.setCorrectAnswers(correctAnswers);
         existing.setTotalQuestions(totalQuestions);
