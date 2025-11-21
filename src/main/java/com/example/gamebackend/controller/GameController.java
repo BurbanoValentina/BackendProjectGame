@@ -2,7 +2,6 @@ package com.example.gamebackend.controller;
 
 import java.util.List;
 
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,7 +19,6 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/games")
-@CrossOrigin(origins = "${app.frontend.url}")
 public class GameController {
 
     private final GameFacade gameFacade;

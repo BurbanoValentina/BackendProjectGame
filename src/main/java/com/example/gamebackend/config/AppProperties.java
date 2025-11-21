@@ -1,5 +1,8 @@
 package com.example.gamebackend.config;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -28,6 +31,7 @@ public class AppProperties {
     
     public static class Frontend {
         private String url = "http://localhost:5173";
+        private List<String> allowedOrigins = new ArrayList<>(List.of("http://localhost:5173"));
         
         public String getUrl() {
             return url;
@@ -35,6 +39,17 @@ public class AppProperties {
         
         public void setUrl(String url) {
             this.url = url;
+        }
+
+        public List<String> getAllowedOrigins() {
+            if (allowedOrigins == null || allowedOrigins.isEmpty()) {
+                return List.of(url);
+            }
+            return allowedOrigins;
+        }
+
+        public void setAllowedOrigins(List<String> allowedOrigins) {
+            this.allowedOrigins = allowedOrigins;
         }
     }
 
